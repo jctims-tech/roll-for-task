@@ -1,4 +1,4 @@
-  import { useState, useRef, useEffect, useCallback } from "react";
+ import { useState, useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
 
 const GOLD = "#FFD700";
@@ -803,6 +803,16 @@ export default function App() {
         <div style={{marginTop:16,fontSize:11,color:"rgba(255,255,255,0.25)",fontWeight:700,animation:"fadeUp 0.6s ease 0.5s both"}}>
           Free · No account needed · Works on any device
         </div>
+        <a href="/why-it-works.html" style={{
+          marginTop:14, fontSize:11, color:"rgba(255,215,0,0.45)",
+          fontWeight:700, textDecoration:"none", letterSpacing:0.3,
+          animation:"fadeUp 0.6s ease 0.55s both", display:"block",
+        }}
+          onMouseOver={e=>e.target.style.color="rgba(255,215,0,0.75)"}
+          onMouseOut={e=>e.target.style.color="rgba(255,215,0,0.45)"}
+        >
+          Why does this work? →
+        </a>
       </div>
     );
   }
@@ -973,6 +983,19 @@ export default function App() {
             style={btn(C.must,"#1a1000",{width:"100%",fontSize:16,padding:"14px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.5), 0 0 20px rgba(255,215,0,0.25)"})}>
             Let's Roll!
           </button>
+        </div>
+
+        {/* Why it works footer link */}
+        <div style={{textAlign:"center", paddingBottom:24, paddingTop:8}}>
+          <a href="/why-it-works.html" style={{
+            fontSize:11, color:"rgba(255,215,0,0.4)",
+            fontWeight:700, textDecoration:"none", letterSpacing:0.3,
+          }}
+            onMouseOver={e=>e.target.style.color="rgba(255,215,0,0.7)"}
+            onMouseOut={e=>e.target.style.color="rgba(255,215,0,0.4)"}
+          >
+            Why does this work? →
+          </a>
         </div>
       </div>
     );
