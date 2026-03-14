@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+  import { useState, useRef, useEffect, useCallback } from "react";
+import * as THREE from "three";
 
 const GOLD = "#FFD700";
 const GOLD_DIM = "#c8a000";
@@ -66,7 +67,119 @@ const GLOBAL_CSS = `
   button:disabled { opacity:0.35; cursor:not-allowed; }
   @keyframes glowGold { 0%,100%{box-shadow:0 0 12px rgba(255,215,0,0.3),inset 0 1px 0 rgba(255,255,255,0.06)} 50%{box-shadow:0 0 28px rgba(255,215,0,0.55),inset 0 1px 0 rgba(255,255,255,0.06)} }
   @keyframes glowViolet { 0%,100%{box-shadow:0 0 12px rgba(168,122,255,0.35),inset 0 1px 0 rgba(255,255,255,0.06)} 50%{box-shadow:0 0 28px rgba(168,122,255,0.6),inset 0 1px 0 rgba(255,255,255,0.06)} }
+  @keyframes achieveSlide {
+    0%   { transform: translateY(120px) scale(0.85); opacity:0; }
+    8%   { transform: translateY(-8px)  scale(1.03); opacity:1; }
+    12%  { transform: translateY(0px)   scale(1);    opacity:1; }
+    88%  { transform: translateY(0px)   scale(1);    opacity:1; }
+    100% { transform: translateY(120px) scale(0.9);  opacity:0; }
+  }
+  @keyframes achieveShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes achieveStar {
+    0%,100% { transform: scale(1) rotate(0deg); }
+    50%     { transform: scale(1.3) rotate(15deg); }
+  }
 `;
+
+// ── ACHIEVEMENT DATA ──────────────────────────────────────────────────────────
+// Fixed achievements — always show at specific counts
+const FIXED_ACHIEVEMENTS = {
+  1:  { icon:"⚔️", title:"First Victory",    flavor:"Look at you. First task down. The bar was low but you cleared it and that counts.", reward:"The dopamine hit you just felt. You're welcome." },
+  5:  { icon:"💎", title:"Legendary",         flavor:"Honestly? We didn't have a plan for this. Nobody makes it this far.", reward:"We'll figure something out. Stand by." },
+  13: { icon:"🔮", title:"Occultist",         flavor:"Thirteen tasks. Unlucky for some, but apparently not for you. You're performing rituals of efficiency that would make a project manager weep. Keep your soul inside your body, please.", reward:"A haunting sense of accomplishment." },
+};
+
+// Final boss — always shown when all tasks complete
+const FINAL_BOSS_ACHIEVEMENT = { icon:"🌟", title:"Final Boss", flavor:"You've done it. You've reached the end. Go to bed. Go to the kitchen. Look at a tree. You're making the rest of us look bad.", reward:"Legendary status and a very concerned look from your pet." };
+
+// Random pool — shown for all other completions
+const ACHIEVEMENTS = [
+  { icon:"🎯", title:"Locked In",               flavor:"The streak is real. Whatever you're doing, don't stop to think about it.",                                                                               reward:"The right to tell someone you were productive today." },
+  { icon:"🔥", title:"On A Roll",                flavor:"You've crossed a threshold into a reality where you actually do things. It's weird here, isn't it?",                                                    reward:"A fleeting sense of superiority." },
+  { icon:"⚡", title:"Unstoppable",              flavor:"We're not saying you're a legend but we're not <em>not</em> saying it either.",                                                                         reward:"Bragging rights." },
+  { icon:"🚀", title:"Escape Velocity",          flavor:"You're moving so fast you're starting to glow on reentry. Most people burn up before now.",                                                             reward:"Friction burns and glory." },
+  { icon:"🏹", title:"In The Zone",              flavor:"You've reached escape velocity. Too fast for your own distractions to catch you. Look at them down there — they look like ants.",                       reward:"Oxygen. (metaphorical)" },
+  { icon:"🧬", title:"Who Even Are You",         flavor:"Your DNA is rearranging itself into something... functional. It's disgusting. I liked you better when you were a mess, it was more relatable.",        reward:"A gold star." },
+  { icon:"🧪", title:"Overdose",                 flavor:"You've officially exceeded the safe dosage of getting stuff done. I'm monitoring your vitals for signs of a personality transplant.",                   reward:"A clean cage and some cheese." },
+  { icon:"🌀", title:"Category 5",               flavor:"You're a Category 5 task killer. Most people at this stage are curled in a fetal position wondering where it all went wrong.",                          reward:"Hazard pay. (we're working on it)" },
+  { icon:"👑", title:"Three Productive People",  flavor:"I'm starting to suspect you're just three smaller productive people in a trench coat.",                                                                 reward:"Whoever's in the middle, you're doing great." },
+  { icon:"📊", title:"Statistically Improbable", flavor:"We ran the numbers. The numbers are confused.",                                                                                                         reward:"Tell no one. They won't believe you anyway." },
+  { icon:"🏆", title:"Vindicated",               flavor:"Somewhere out there, your third grade teacher who said you'd never focus on anything is having a very confusing day.",                                  reward:"Cold, delicious vindication." },
+];
+
+function getAchievement(count, isAllDone) {
+  if (isAllDone) return null;
+  if (FIXED_ACHIEVEMENTS[count]) return FIXED_ACHIEVEMENTS[count];
+  // Random from pool for everything else
+  return ACHIEVEMENTS[Math.floor(Math.random() * ACHIEVEMENTS.length)];
+}
+
+// ── ACHIEVEMENT TOAST ─────────────────────────────────────────────────────────
+function AchievementToast({ achievement, taskName }) {
+  if (!achievement) return null;
+  return (
+    <div style={{
+      position:"fixed", bottom:24, left:0, right:0,
+      display:"flex", justifyContent:"center",
+      padding:"0 16px",
+      boxSizing:"border-box",
+      zIndex:9999,
+      animation:"achieveSlide 9s ease forwards",
+      pointerEvents:"none",
+    }}>
+      <div style={{
+        width:"100%", maxWidth:360,
+        background:"#12103a",
+        border:"1px solid rgba(255,215,0,0.45)",
+        borderRadius:14,
+        padding:"14px 16px",
+        boxSizing:"border-box",
+        display:"flex", gap:14, alignItems:"flex-start",
+      }}>
+        {/* Icon */}
+        <div style={{
+          fontSize:30, flexShrink:0, lineHeight:1,
+          marginTop:2,
+          animation:"achieveStar 0.6s ease-in-out 0.2s",
+        }}>
+          {achievement.icon}
+        </div>
+
+        {/* Text block */}
+        <div style={{flex:1, minWidth:0}}>
+          {/* Header label */}
+          <div style={{
+            fontSize:9, fontWeight:900, letterSpacing:"0.18em",
+            color:"#c8a030", marginBottom:4, textTransform:"uppercase",
+          }}>NEW ACHIEVEMENT!</div>
+
+          {/* Title */}
+          <div style={{
+            fontSize:17, fontWeight:900, color:"#ffffff",
+            lineHeight:1.2, marginBottom:6,
+          }}>
+            {achievement.title}
+          </div>
+
+          {/* Flavor text */}
+          <div style={{
+            fontSize:11, color:"rgba(210,205,255,0.75)",
+            fontWeight:500, lineHeight:1.5, marginBottom:7,
+          }} dangerouslySetInnerHTML={{__html: achievement.flavor}}/>
+
+          {/* Reward line */}
+          <div style={{
+            fontSize:11, color:"#c8a030",
+            fontWeight:700,
+          }}>🎲 Reward: {achievement.reward}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function btn(bg, color, extra={}) {
   return { background:bg, color, border:"none", borderRadius:12, padding:"10px 20px",
@@ -140,341 +253,322 @@ function CountdownTimer({ minutes, onDone }) {
   );
 }
 
-// ── DIE HELPERS ───────────────────────────────────────────────────────────────
-function polyPts(n, r, cx, cy) {
-  return Array.from({length:n},(_,i)=>{
-    const a = (i*2*Math.PI/n) - Math.PI/2;
-    return `${cx+r*Math.cos(a)},${cy+r*Math.sin(a)}`;
-  }).join(" ");
-}
-function getDie(count) {
-  if (count <= 4)  return { faces:4,  pts:"50,8 92,86 8,86",         fill:"#FF6B6B", stroke:"#c04040" };
-  if (count <= 6)  return { faces:6,  pts:"12,12 88,12 88,88 12,88", fill:"#4ECDC4", stroke:"#2a9d94" };
-  if (count <= 8)  return { faces:8,  pts:"50,6 94,50 50,94 6,50",   fill:"#C77DFF", stroke:"#8840cc" };
-  if (count <= 12) return { faces:12, pts:polyPts(6,44,50,50),        fill:"#FF9A3C", stroke:"#cc6000" };
-  return               { faces:20, pts:polyPts(7,44,50,50),           fill:"#6BCB77", stroke:"#3a9a4a" };
-}
-const PIP_MAP = {
-  1:[[50,50]], 2:[[32,32],[68,68]], 3:[[32,32],[50,50],[68,68]],
-  4:[[32,32],[68,32],[32,68],[68,68]], 5:[[32,32],[68,32],[50,50],[32,68],[68,68]],
-  6:[[32,28],[68,28],[32,50],[68,50],[32,72],[68,72]],
-};
 
-// ── DICE BOX — face value maps directly to item index ─────────────────────────
+// ── THREE.JS AUDIO ─────────────────────────────────────────────────────────────
+function d20PlayRoll(ctx) {
+  // Tumbling thuds: a series of low-mid impacts that speed up then slow
+  // Each impact = a pitched noise burst (woody thock) + tiny sub thud
+  const impacts = [0, 0.18, 0.32, 0.44, 0.54, 0.60, 0.65];
+  impacts.forEach((delay, i) => {
+    const vol = 0.28 - i * 0.025;
+    const dur = 0.06;
+    const sr = ctx.sampleRate;
+
+    // Noise body — bandpass filtered for woody "thock"
+    const buf = ctx.createBuffer(1, Math.floor(sr * dur), sr);
+    const d = buf.getChannelData(0);
+    for (let j = 0; j < d.length; j++) {
+      const env = Math.pow(1 - j / d.length, 2.5);
+      d[j] = (Math.random() * 2 - 1) * env;
+    }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const bp = ctx.createBiquadFilter(); bp.type = "bandpass";
+    bp.frequency.value = 280 + i * 30; bp.Q.value = 1.8;
+    const g = ctx.createGain(); g.gain.value = Math.max(0.05, vol);
+    src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+    src.start(ctx.currentTime + delay);
+
+    // Sub thud underneath each impact
+    const o = ctx.createOscillator(); const og = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(95, ctx.currentTime + delay);
+    o.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + delay + 0.08);
+    og.gain.setValueAtTime(Math.max(0.04, vol * 0.55), ctx.currentTime + delay);
+    og.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.1);
+    o.connect(og); og.connect(ctx.destination);
+    o.start(ctx.currentTime + delay);
+    o.stop(ctx.currentTime + delay + 0.12);
+  });
+}
+function d20PlayThud(ctx) {
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type="sine"; o.frequency.setValueAtTime(80,ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(22,ctx.currentTime+0.3);
+  g.gain.setValueAtTime(0.6,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
+  o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.4);
+}
+
+// ── D20 FACE DATA ─────────────────────────────────────────────────────────────
+const D20_FACE_NUMBERS=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+function buildD20FaceNormals(){
+  const geo=new THREE.IcosahedronGeometry(1,0).toNonIndexed();
+  const pos=geo.attributes.position;
+  return Array.from({length:20},(_,f)=>{
+    const cx=(pos.getX(f*3)+pos.getX(f*3+1)+pos.getX(f*3+2))/3;
+    const cy=(pos.getY(f*3)+pos.getY(f*3+1)+pos.getY(f*3+2))/3;
+    const cz=(pos.getZ(f*3)+pos.getZ(f*3+1)+pos.getZ(f*3+2))/3;
+    return new THREE.Vector3(cx,cy,cz).normalize();
+  });
+}
+const D20_FACE_NORMALS=buildD20FaceNormals();
+function d20GetTopFace(quaternion){
+  const invQ=quaternion.clone().invert();
+  const localUp=new THREE.Vector3(0,1,0).applyQuaternion(invQ);
+  let best=-Infinity,idx=0;
+  D20_FACE_NORMALS.forEach((n,i)=>{ const dot=n.dot(localUp); if(dot>best){best=dot;idx=i;} });
+  return D20_FACE_NUMBERS[idx];
+}
+
+// ── D20 FACE TEXTURE ──────────────────────────────────────────────────────────
+function makeD20FaceTex(number){
+  const size=512;
+  const cv=document.createElement("canvas"); cv.width=cv.height=size;
+  const ctx=cv.getContext("2d");
+  ctx.fillStyle="#1a0840";
+  ctx.beginPath(); ctx.moveTo(size/2,8); ctx.lineTo(size-8,size-8); ctx.lineTo(8,size-8); ctx.closePath(); ctx.fill();
+  [[size*.38,size*.42,size*.26,"rgba(130,65,210,0.24)"],[size*.62,size*.58,size*.20,"rgba(165,85,255,0.19)"],
+   [size*.44,size*.68,size*.18,"rgba(95,42,185,0.26)"],[size*.58,size*.32,size*.16,"rgba(185,105,255,0.13)"],
+  ].forEach(([x,y,r,color])=>{
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,color); g.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(size/2,8); ctx.lineTo(size-8,size-8); ctx.lineTo(8,size-8); ctx.closePath(); ctx.fill();
+  });
+  ctx.strokeStyle="#c8a030"; ctx.lineWidth=9; ctx.lineJoin="round";
+  ctx.beginPath(); ctx.moveTo(size/2,12); ctx.lineTo(size-12,size-12); ctx.lineTo(12,size-12); ctx.closePath(); ctx.stroke();
+  const fs=number>=10?128:158;
+  ctx.font=`900 ${fs}px Arial Black,Arial,sans-serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.shadowColor="rgba(0,0,0,0.65)"; ctx.shadowBlur=5; ctx.shadowOffsetX=2; ctx.shadowOffsetY=3;
+  ctx.fillStyle="#b8901e"; ctx.fillText(String(number),size/2,size*.60);
+  ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0;
+  ctx.fillStyle="#d4aa40"; ctx.fillText(String(number),size/2,size*.60);
+  return new THREE.CanvasTexture(cv);
+}
+
+function buildD20Mesh(){
+  const group=new THREE.Group();
+  const geo=new THREE.IcosahedronGeometry(1,0).toNonIndexed();
+  const pos=geo.attributes.position;
+  for(let f=0;f<20;f++){
+    const verts=new Float32Array(9);
+    for(let v=0;v<3;v++){ verts[v*3]=pos.getX(f*3+v); verts[v*3+1]=pos.getY(f*3+v); verts[v*3+2]=pos.getZ(f*3+v); }
+    const uvs=new Float32Array([0.5,0.95,0.05,0.05,0.95,0.05]);
+    const fg=new THREE.BufferGeometry();
+    fg.setAttribute("position",new THREE.BufferAttribute(verts,3));
+    fg.setAttribute("uv",new THREE.BufferAttribute(uvs,2));
+    fg.computeVertexNormals();
+    group.add(new THREE.Mesh(fg,new THREE.MeshLambertMaterial({map:makeD20FaceTex(D20_FACE_NUMBERS[f])})));
+  }
+  const edgeGeo=new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.007,0));
+  group.add(new THREE.LineSegments(edgeGeo,new THREE.LineBasicMaterial({color:0xb89028,transparent:true,opacity:0.88})));
+  return group;
+}
+
+function buildD20Surface(scene){
+  const feltC=document.createElement("canvas"); feltC.width=feltC.height=1024;
+  const fc=feltC.getContext("2d");
+  fc.fillStyle="#0c0c0c"; fc.fillRect(0,0,1024,1024);
+  for(let i=0;i<50000;i++){
+    const v=14+Math.random()*14;
+    fc.fillStyle=`rgba(${v},${v},${v+3},${Math.random()*0.05})`;
+    fc.fillRect(Math.random()*1024,Math.random()*1024,1,1);
+  }
+  const cg=fc.createRadialGradient(512,512,50,512,512,500);
+  cg.addColorStop(0,"rgba(50,40,60,0.3)"); cg.addColorStop(1,"rgba(0,0,0,0)");
+  fc.fillStyle=cg; fc.fillRect(0,0,1024,1024);
+  const feltTex=new THREE.CanvasTexture(feltC);
+  feltTex.wrapS=THREE.RepeatWrapping; feltTex.wrapT=THREE.RepeatWrapping; feltTex.repeat.set(3,2);
+  const surface=new THREE.Mesh(new THREE.PlaneGeometry(20,14),new THREE.MeshLambertMaterial({map:feltTex}));
+  surface.rotation.x=-Math.PI/2; surface.position.y=0; scene.add(surface);
+  const vc=document.createElement("canvas"); vc.width=vc.height=512;
+  const vctx=vc.getContext("2d");
+  const vg=vctx.createRadialGradient(256,256,60,256,256,360);
+  vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.7)");
+  vctx.fillStyle=vg; vctx.fillRect(0,0,512,512);
+  const vignette=new THREE.Mesh(new THREE.PlaneGeometry(20,14),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(vc),transparent:true,depthWrite:false}));
+  vignette.rotation.x=-Math.PI/2; vignette.position.y=0.01; scene.add(vignette);
+}
+
+function buildD20Shadow(scene){
+  const sc=document.createElement("canvas"); sc.width=sc.height=128;
+  const sctx=sc.getContext("2d");
+  const sg=sctx.createRadialGradient(64,64,4,64,64,62);
+  sg.addColorStop(0,"rgba(0,0,0,0.6)"); sg.addColorStop(1,"rgba(0,0,0,0)");
+  sctx.fillStyle=sg; sctx.fillRect(0,0,128,128);
+  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.2),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc),transparent:true,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2; shadow.position.y=0.02; scene.add(shadow); return shadow;
+}
+
+function buildD20Tray(scene){
+  const W=9.0,D=6.0,H=1.1,T=0.25;
+  const woodC=document.createElement("canvas"); woodC.width=woodC.height=256;
+  const wc=woodC.getContext("2d");
+  const wg=wc.createLinearGradient(0,0,256,0);
+  wg.addColorStop(0,"#2e1508"); wg.addColorStop(0.5,"#3a1c0a"); wg.addColorStop(1,"#251005");
+  wc.fillStyle=wg; wc.fillRect(0,0,256,256);
+  for(let i=0;i<60;i++){
+    const y=(i/60)*256+Math.random()*3;
+    wc.beginPath(); wc.moveTo(0,y);
+    wc.bezierCurveTo(64,y+Math.random()*10-5,192,y+Math.random()*10-5,256,y);
+    wc.strokeStyle=`rgba(${10+Math.random()*12},${4+Math.random()*6},${1+Math.random()*3},${0.25+Math.random()*0.3})`;
+    wc.lineWidth=0.6+Math.random()*1.6; wc.stroke();
+  }
+  for(let i=0;i<120;i++){
+    wc.fillStyle=`rgba(8,3,1,${Math.random()*0.18})`;
+    wc.beginPath(); wc.arc(Math.random()*256,Math.random()*256,Math.random()*2,0,Math.PI*2); wc.fill();
+  }
+  const woodTex=new THREE.CanvasTexture(woodC);
+  const mat=new THREE.MeshLambertMaterial({map:woodTex,side:THREE.DoubleSide});
+  const rimMat=new THREE.MeshPhongMaterial({color:0x8a6515,shininess:20,specular:new THREE.Color(0x4a3508)});
+  [[0,H/2,D+T/2,W*2+T*2,H,T],[0,H/2,-D-T/2,W*2+T*2,H,T],[-W-T/2,H/2,0,T,H,D*2],[W+T/2,H/2,0,T,H,D*2]].forEach(([x,y,z,bw,bh,bd])=>{
+    const wall=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),mat);
+    wall.position.set(x,y,z); wall.castShadow=true; wall.receiveShadow=true; scene.add(wall);
+  });
+  [[0,H+0.03,D+T/2,W*2+T*2,0.06,T+0.02],[0,H+0.03,-D-T/2,W*2+T*2,0.06,T+0.02],[-W-T/2,H+0.03,0,T+0.02,0.06,D*2],[W+T/2,H+0.03,0,T+0.02,0.06,D*2]].forEach(([x,y,z,bw,bh,bd])=>{
+    const rim=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),rimMat);
+    rim.position.set(x,y,z); scene.add(rim);
+  });
+}
+
+// ── D20 TRAY COMPONENT ────────────────────────────────────────────────────────
 function DiceBox({ onResult, items }) {
-  const die = getDie(items.length);
-  const [rolling,  setRolling]  = useState(false);
-  const [landed,   setLanded]   = useState(false);
-  const [faceVal,  setFaceVal]  = useState(1);
-  const [animKey,  setAnimKey]  = useState(0);
-  const tickRef = useRef(null);
+  const mountRef=useRef(null);
+  const ctxRef  =useRef(null);
+  const rafRef  =useRef(null);
+  const busyRef =useRef(false);
+  const [rolling,setRolling]=useState(false);
 
-  const roll = () => {
-    if (rolling || !items.length) return;
-    setRolling(true); setLanded(false);
-    setAnimKey(k => k + 1);
+  useEffect(()=>{
+    const el=mountRef.current;
+    const W=el.clientWidth, H=el.clientHeight;
+    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+    renderer.setSize(W,H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    el.appendChild(renderer.domElement);
+    const scene=new THREE.Scene();
+    const camera=new THREE.PerspectiveCamera(52,W/H,0.1,100);
+    camera.position.set(0,10,6); camera.lookAt(0,0,0);
+    scene.add(new THREE.AmbientLight(0x3a2808,2.0));
+    const lamp=new THREE.PointLight(0xfff5d0,5.0,35);
+    lamp.position.set(0,12,2); lamp.castShadow=true;
+    lamp.shadow.mapSize.set(2048,2048); lamp.shadow.bias=-0.001; scene.add(lamp);
+    const fill=new THREE.DirectionalLight(0xffe8c0,0.6);
+    fill.position.set(2,6,8); scene.add(fill);
+    const acc=new THREE.PointLight(0x6622bb,0.5,20);
+    acc.position.set(-3,5,-6); scene.add(acc);
+    buildD20Surface(scene);
+    buildD20Tray(scene);
+    const shadowMesh=buildD20Shadow(scene);
+    const SURFACE_Y=1.8;
+    const d20=buildD20Mesh();
+    d20.scale.setScalar(1.8);
+    d20.position.set(-18,SURFACE_Y,0);
+    d20.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+    scene.add(d20);
+    renderer.render(scene,camera);
+    ctxRef.current={renderer,scene,camera,d20,shadowMesh,SURFACE_Y};
+    const onTap=()=>{ if(!busyRef.current) doRoll(); };
+    renderer.domElement.addEventListener("click",    onTap);
+    renderer.domElement.addEventListener("touchend", onTap,{passive:true});
+    return ()=>{
+      cancelAnimationFrame(rafRef.current);
+      renderer.domElement.removeEventListener("click",    onTap);
+      renderer.domElement.removeEventListener("touchend", onTap);
+      if(el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
+      renderer.dispose();
+    };
+  },[]);
 
-    // Pick the final face first, then animate toward it
-    const finalFace = 1 + Math.floor(Math.random() * items.length);
-    let count = 0;
-    tickRef.current = setInterval(() => {
-      // Show random faces while rolling
-      setFaceVal(1 + Math.floor(Math.random() * items.length));
-      count++;
-      if (count > 20) {
-        clearInterval(tickRef.current);
-        // Land on the pre-determined face
-        setFaceVal(finalFace);
-        setRolling(false);
-        setLanded(true);
-        setTimeout(() => setLanded(false), 400);
-        // item index = finalFace - 1 (die faces are 1-based)
-        onResult(items[finalFace - 1]);
+  const doRoll=()=>{
+    if(!items||!items.length) return;
+    const {renderer,scene,camera,d20,shadowMesh,SURFACE_Y}=ctxRef.current;
+    busyRef.current=true; setRolling(true);
+    const fromLeft=Math.random()>0.5;
+    const START_X=fromLeft?-18:18;
+    const END_X=(Math.random()-0.5)*1.5;
+    const END_Z=(Math.random()-0.5)*1.2;
+    const travelDir=fromLeft?1:-1;
+    const TOTAL_Z=-(travelDir)*(4+Math.random()*2)*Math.PI*2;
+    const wobbleX=(Math.random()-0.5)*6;
+    const wobbleY=(Math.random()-0.5)*3;
+    d20.position.set(START_X,SURFACE_Y,END_Z);
+    try{
+      const ac=new(window.AudioContext||window.webkitAudioContext)();
+      d20PlayRoll(ac);
+      setTimeout(()=>{try{d20PlayThud(ac);}catch(e){}},1900);
+    }catch(e){}
+    const ROLL_DUR=1700, SETTLE_DUR=350, TOTAL=ROLL_DUR+SETTLE_DUR;
+    const t0=performance.now();
+    cancelAnimationFrame(rafRef.current);
+    const roll=()=>{
+      const elapsed=performance.now()-t0;
+      const p=Math.min(elapsed/TOTAL,1);
+      if(elapsed<=ROLL_DUR){
+        const rp=elapsed/ROLL_DUR;
+        const ease=1-Math.pow(1-rp,3);
+        const speed=1-ease;
+        d20.position.x=START_X+(END_X-START_X)*ease;
+        d20.position.z=END_Z;
+        d20.position.y=SURFACE_Y+Math.abs(Math.sin(rp*Math.PI*6))*0.28*speed;
+        d20.rotation.z=TOTAL_Z*ease;
+        d20.rotation.x=wobbleX*Math.sin(rp*Math.PI*4)*speed;
+        d20.rotation.y=wobbleY*Math.sin(rp*Math.PI*3)*speed;
+        const h=d20.position.y-SURFACE_Y;
+        shadowMesh.position.x=d20.position.x; shadowMesh.position.z=d20.position.z;
+        shadowMesh.scale.set(1+h*0.2,1+h*0.2,1);
+        shadowMesh.material.opacity=Math.max(0,0.55-h*0.18);
+      } else {
+        const sp=(elapsed-ROLL_DUR)/SETTLE_DUR;
+        const w=Math.sin(sp*Math.PI*4)*(1-sp)*0.04;
+        d20.position.set(END_X,SURFACE_Y+Math.abs(w)*0.3,END_Z);
+        d20.rotation.z=TOTAL_Z+w;
+        d20.rotation.x=wobbleX*0.05*(1-sp);
+        d20.rotation.y=wobbleY*0.05*(1-sp);
+        shadowMesh.position.x=END_X; shadowMesh.position.z=END_Z;
+        shadowMesh.scale.set(1,1,1); shadowMesh.material.opacity=0.52;
       }
-    }, 75);
+      renderer.render(scene,camera);
+      if(p<1){
+        rafRef.current=requestAnimationFrame(roll);
+      } else {
+        d20.position.set(END_X,SURFACE_Y,END_Z);
+        renderer.render(scene,camera);
+        // Pick random item from pool using modulo
+        const idx=Math.floor(Math.random()*items.length);
+        busyRef.current=false; setRolling(false);
+        onResult(items[idx]);
+        const still=()=>{ rafRef.current=requestAnimationFrame(still); renderer.render(scene,camera); };
+        still();
+      }
+    };
+    rafRef.current=requestAnimationFrame(roll);
   };
-
-  useEffect(() => () => clearInterval(tickRef.current), []);
-
-  const showPips = die.faces === 6;
-  const pips = PIP_MAP[Math.min(6, Math.max(1, faceVal))] || PIP_MAP[1];
 
   return (
     <div style={{textAlign:"center"}}>
-      <div onClick={roll} style={{
-        width:"100%", maxWidth:280, height:200, margin:"0 auto",
-        position:"relative", cursor:"pointer",
-        background:`radial-gradient(ellipse at 30% 25%, ${C.felt}, ${C.feltDark})`,
-        borderRadius:20, border:`6px solid ${C.feltBorder}`,
-        boxShadow:"inset 0 4px 28px rgba(0,0,0,0.45), 0 8px 32px rgba(0,0,0,0.28)",
-        overflow:"hidden", userSelect:"none",
-        display:"flex", alignItems:"center", justifyContent:"center",
-      }}>
-        <div style={{position:"absolute",inset:0,opacity:0.05,
-          backgroundImage:"repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)",
-          backgroundSize:"8px 8px"}}/>
-        <div style={{position:"absolute",inset:0,boxShadow:"inset 0 0 50px rgba(0,0,0,0.3)",borderRadius:14}}/>
-        {!rolling && !landed && (
-          <div style={{position:"absolute",bottom:8,left:0,right:0,textAlign:"center",
-            fontSize:10,color:"rgba(255,255,255,0.35)",fontWeight:800,letterSpacing:2}}>
-            TAP TO ROLL
-          </div>
-        )}
-        <div key={animKey} style={{
-          width:100, height:100,
-          animation: rolling ? "dieWiggle 1.6s ease-in-out forwards"
-                   : landed  ? "dieLand 0.35s ease-out forwards"
-                   : "none",
-          filter:"drop-shadow(0 8px 16px rgba(0,0,0,0.55))",
-        }}>
-          <svg width="100" height="100" viewBox="0 0 100 100">
-            <defs>
-              <radialGradient id="dg" cx="35%" cy="30%">
-                <stop offset="0%" stopColor="white" stopOpacity="0.28"/>
-                <stop offset="100%" stopColor="black" stopOpacity="0.08"/>
-              </radialGradient>
-            </defs>
-            <polygon points={die.pts} fill={die.fill} stroke={die.stroke} strokeWidth="4"/>
-            <polygon points={die.pts} fill="url(#dg)"/>
-            {showPips
-              ? pips.map(([cx,cy],i) => <circle key={i} cx={cx} cy={cy} r="7" fill="white" opacity="0.95"/>)
-              : <text x="50" y="60" textAnchor="middle" fontSize="30" fontWeight="900"
-                  fill="white" fontFamily="sans-serif"
-                  style={{paintOrder:"stroke",stroke:"rgba(0,0,0,0.2)",strokeWidth:"3"}}>
-                  {faceVal}
-                </text>
-            }
-          </svg>
+      <div ref={mountRef} style={{
+        width:"100%", height:220, borderRadius:12, overflow:"hidden",
+        cursor:rolling?"wait":"pointer",
+        boxShadow:"0 8px 40px rgba(0,0,0,0.6)",
+      }}/>
+      {!rolling && (
+        <div style={{marginTop:8,fontSize:10,color:"rgba(255,255,255,0.25)",fontWeight:800,letterSpacing:2}}>
+          TAP TO ROLL
         </div>
-      </div>
-
-      {/* Show numbered task list so you can see what each face means */}
-      <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:4,justifyContent:"center"}}>
-        {items.map((item,i) => (
-          <div key={item.id} style={{
-            display:"inline-flex",alignItems:"center",gap:4,
-            background: faceVal === i+1 && !rolling ? (item.type==="fun"?"rgba(168,122,255,0.2)":"rgba(255,215,0,0.15)") : "rgba(255,255,255,0.05)",
-            borderRadius:20, padding:"3px 9px",fontSize:11,fontWeight:700,
-            color: faceVal === i+1 && !rolling ? (item.type==="fun"?C.fun:C.must) : C.soft,
-            transition:"background 0.2s,color 0.2s",
-            border: faceVal === i+1 && !rolling ? `1.5px solid ${item.type==="fun"?C.fun:C.must}` : "1.5px solid rgba(255,255,255,0.1)",
-          }}>
-            <span style={{fontWeight:900}}>{i+1}</span>
-            <span style={{opacity:0.7}}>·</span>
-            {item.text.length > 14 ? item.text.slice(0,13)+"…" : item.text}
-          </div>
-        ))}
-      </div>
-      <div style={{marginTop:6,fontSize:11,color:C.soft,fontWeight:700}}>
-        d{die.faces} · tap to roll · face = task
-      </div>
+      )}
+      {rolling && (
+        <div style={{marginTop:8,fontSize:10,color:"rgba(200,191,255,0.4)",fontWeight:800,letterSpacing:2}}>
+          ROLLING...
+        </div>
+      )}
     </div>
   );
 }
 
 // ── SPIN WHEEL — pointer at top, result matches visual ───────────────────────
-function SpinWheel({ onResult, items }) {
-  const canvasRef = useRef(null);
-  const busyRef   = useRef(false);
-  const angleRef  = useRef(0);
-  const [busy, setBusy] = useState(false);
-  const WC = [GOLD,"#a87aff","#7eb8f7","#c77dff","#f7c948","#6b8fff","#e87dff","#5bc4ff"];
-
-  const draw = useCallback((angle) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !items.length) return;
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width, cx = W/2, cy = W/2, r = cx - 14;
-    const slice = (2*Math.PI) / items.length;
-    ctx.clearRect(0, 0, W, W);
-
-    // Drop shadow ring
-    ctx.save();
-    ctx.shadowBlur = 16; ctx.shadowColor = "rgba(0,0,0,0.2)";
-    ctx.beginPath(); ctx.arc(cx, cy, r+4, 0, 2*Math.PI);
-    ctx.fillStyle = "#ddd"; ctx.fill();
-    ctx.restore();
-
-    // Slices
-    items.forEach((item, i) => {
-      const start = angle + i * slice;
-      ctx.beginPath(); ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, start, start + slice); ctx.closePath();
-      ctx.fillStyle = WC[i % WC.length]; ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(start + slice/2);
-      ctx.textAlign = "right"; ctx.fillStyle = "white";
-      ctx.font = `bold 11px Nunito,sans-serif`;
-      ctx.fillText(
-        item.text.length > 12 ? item.text.slice(0,11)+"…" : item.text,
-        r - 10, 4
-      );
-      ctx.restore();
-    });
-
-    // Center hub
-    const gr = ctx.createRadialGradient(cx-3, cy-3, 2, cx, cy, 17);
-    gr.addColorStop(0, "#fff"); gr.addColorStop(1, "#ccc");
-    ctx.beginPath(); ctx.arc(cx, cy, 17, 0, 2*Math.PI);
-    ctx.fillStyle = gr; ctx.fill();
-    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 2; ctx.stroke();
-
-    // Pointer — triangle pointing DOWN from top center, tip at wheel edge
-    ctx.save();
-    ctx.shadowBlur = 4; ctx.shadowColor = "rgba(0,0,0,0.35)";
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - r - 2);       // tip at top of wheel
-    ctx.lineTo(cx - 10, cy - r - 18); // left base
-    ctx.lineTo(cx + 10, cy - r - 18); // right base
-    ctx.closePath();
-    ctx.fillStyle = "#222";
-    ctx.fill();
-    ctx.restore();
-  }, [items]);
-
-  useEffect(() => { draw(angleRef.current); }, [draw]);
-
-  const spin = () => {
-    if (busyRef.current || !items.length) return;
-    busyRef.current = true; setBusy(true);
-    // Pick winner FIRST so visual and result always match
-    const winnerIdx = Math.floor(Math.random() * items.length);
-    const slice = (2*Math.PI) / items.length;
-
-    // Calculate how much to spin so winnerIdx slice is under the top pointer
-    // Pointer is at angle = -π/2 (top). We want slice winnerIdx to land there.
-    // Each slice starts at: currentAngle + winnerIdx * slice
-    // We need: currentAngle + winnerIdx * slice + slice/2 = -π/2 + k*2π  (center of slice at top)
-    const currentAngle = angleRef.current % (2*Math.PI);
-    const targetAngle = -Math.PI/2 - (winnerIdx * slice) - slice/2;
-    // Add multiple full rotations for spin effect
-    const fullSpins = (5 + Math.floor(Math.random()*3)) * 2 * Math.PI;
-    const spinAmount = fullSpins + ((targetAngle - currentAngle + 10 * Math.PI) % (2*Math.PI));
-    const endAngle = angleRef.current + spinAmount;
-
-    const duration = 3000 + Math.random() * 1000;
-    const startTime = performance.now();
-    const startAngle = angleRef.current;
-
-    // Ease out cubic
-    const easeOut = t => 1 - Math.pow(1-t, 3);
-
-    const step = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      angleRef.current = startAngle + spinAmount * easeOut(progress);
-      draw(angleRef.current);
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        busyRef.current = false; setBusy(false);
-        onResult(items[winnerIdx]);
-      }
-    };
-    requestAnimationFrame(step);
-  };
-
-  return (
-    <div style={{textAlign:"center"}}>
-      <div style={{display:"flex",justifyContent:"center",paddingTop:20}}>
-        <canvas ref={canvasRef} width={240} height={240}
-          style={{borderRadius:"50%",cursor:"pointer",
-            boxShadow:"0 4px 20px rgba(0,0,0,0.14)"}}
-          onClick={spin}/>
-      </div>
-      <div style={{marginTop:12}}>
-        <button onClick={spin} disabled={busy||!items.length} style={btn(C.fun,"white")}>
-          {busy ? "Spinning…" : "🌀 Spin!"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── SLOT MACHINE — single pick, display always matches result ─────────────────
-function SlotMachine({ onResult, items }) {
-  const [display, setDisplay] = useState("— tap to pull —");
-  const [pulling, setPulling] = useState(false);
-  const [picked,  setPicked]  = useState(null);
-  const [lit,     setLit]     = useState(false);
-  const tickRef = useRef(null);
-
-  const pull = () => {
-    if (pulling || !items.length) return;
-    // Pick winner once up front
-    const winner = items[Math.floor(Math.random() * items.length)];
-    setPulling(true); setLit(false); setPicked(null);
-    let count = 0;
-    tickRef.current = setInterval(() => {
-      const r = items[Math.floor(Math.random() * items.length)];
-      setDisplay((r.type==="fun" ? "✨ " : "✅ ") + r.text);
-      count++;
-      if (count > 20) {
-        clearInterval(tickRef.current);
-        // Always land on the winner
-        setDisplay((winner.type==="fun" ? "✨ " : "✅ ") + winner.text);
-        setPulling(false); setLit(true); setPicked(winner);
-        onResult(winner);
-      }
-    }, 80);
-  };
-
-  useEffect(() => () => clearInterval(tickRef.current), []);
-
-  return (
-    <div style={{textAlign:"center"}}>
-      <div style={{
-        display:"inline-block", minWidth:260,
-        background:"linear-gradient(180deg,#1a1a2e,#0f0f1e)",
-        borderRadius:20, padding:"18px 24px",
-        boxShadow:"0 8px 40px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08)",
-        border:"2px solid #2d2d5e",
-      }}>
-        <div style={{fontSize:11,fontWeight:900,letterSpacing:3,
-          color:GOLD,marginBottom:14,textShadow:`0 0 10px ${GOLD}`}}>
-          TASK·O·MATIC
-        </div>
-        <div style={{
-          background:"#07071a",borderRadius:10,padding:"14px 18px",marginBottom:14,
-          border:`2px solid ${lit?C.accent:"#333"}`,
-          boxShadow:lit?`0 0 16px ${C.accent}88`:"inset 0 2px 8px rgba(0,0,0,0.5)",
-          transition:"border-color 0.3s,box-shadow 0.3s",
-          minHeight:52,display:"flex",alignItems:"center",justifyContent:"center",
-        }}>
-          <div style={{
-            fontFamily:"'Courier New',monospace",fontSize:13,fontWeight:700,
-            color: pulling ? "#666"
-                 : picked?.type==="fun" ? C.fun
-                 : picked?.type==="must" ? C.must
-                 : "#555",
-            textAlign:"center",lineHeight:1.4,wordBreak:"break-word",
-          }}>
-            {display}
-          </div>
-        </div>
-        <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:4}}>
-          {["🍒","⭐","🔔"].map((e,i) => (
-            <div key={i} style={{width:36,height:36,background:"#111",borderRadius:6,
-              border:`1px solid ${lit?"#FFD93D":"#333"}`,
-              display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,
-              transition:"border-color 0.3s",
-              boxShadow:lit?`0 0 8px ${C.accent}66`:"none"}}>
-              {e}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{marginTop:14}}>
-        <button onClick={pull} disabled={pulling||!items.length}
-          style={btn(C.must,"white",{fontSize:15})}>
-          {pulling?"Spinning…":"🎰 Pull the Lever!"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── TAG ───────────────────────────────────────────────────────────────────────
 function Tag({ type }) {
   return (
     <span style={{fontSize:10,fontWeight:800,letterSpacing:1,padding:"2px 8px",borderRadius:20,
@@ -488,6 +582,8 @@ function Tag({ type }) {
 
 // No subtext — the checkbox label says it all
 
+
+// ── ACHIEVEMENTS ──────────────────────────────────────────────────────────────
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [screen,     setScreen]     = useState("landing");
@@ -497,7 +593,6 @@ export default function App() {
   const [funMax,     setFunMax]     = useState(15);
   const [mustItems,  setMustItems]  = useState([]);
   const [funItems,   setFunItems]   = useState([]);
-  const [randomizer, setRandomizer] = useState("dice");
   const [breakMode,  setBreakMode]  = useState("balanced");
   const [mustTimedIds, setMustTimedIds] = useState(new Set());
   const [mustTMin,   setMustTMin]   = useState({});
@@ -506,6 +601,9 @@ export default function App() {
   const [completed,  setCompleted]  = useState([]);
   const [removedFun, setRemovedFun] = useState([]);
   const [confetti,   setConfetti]   = useState(false);
+  const [achievement, setAchievement] = useState(null);
+  const [achieveTask, setAchieveTask] = useState("");
+  const [showAchieve, setShowAchieve] = useState(false);
   const [showTimer,  setShowTimer]  = useState(false);
   const [timerDone,  setTimerDone]  = useState(false);
 
@@ -550,9 +648,9 @@ export default function App() {
   };
 
   // For dice: item is passed directly (face value already picked the item)
-  // For wheel/slots: item is passed directly (winner pre-selected)
+  // Item is passed directly from DiceBox (winner pre-selected by face)
   const handleRoll = (item) => {
-    // If called with a specific item (dice/wheel/slot), use it directly
+    // Use item directly — winner already selected by dice face
     // If called without (shouldn't happen now), fall back to pool
     if (item) {
       handleResult(item);
@@ -583,7 +681,19 @@ export default function App() {
   const markDone = () => {
     if (!result) return;
     if (result.type==="must" && !result.keepInRotation) {
-      setCompleted(p=>[...p,result.id]);
+      setCompleted(p => {
+        const next = [...p, result.id];
+        const isAllDone = next.length === mustItems.length;
+        const a = getAchievement(next.length, isAllDone);
+        if (a) {
+          setAchievement({ ...a, taskName: result.text, key: Date.now() });
+          setTimeout(() => setAchievement(null), 10000);
+        }
+        if (isAllDone) {
+          setTimeout(() => setScreen("celebration"), 50);
+        }
+        return next;
+      });
       setConfetti(true); setTimeout(()=>setConfetti(false),1800);
     }
     if (result.type==="fun" && !result.keepInRotation) {
@@ -698,6 +808,62 @@ export default function App() {
   }
 
   // ── SETUP ─────────────────────────────────────────────────────────────────
+  if (screen === "celebration") {
+    return (
+      <div style={{
+        minHeight:"100vh", background:C.bg,
+        fontFamily:"Nunito,sans-serif", display:"flex", flexDirection:"column",
+        alignItems:"center", justifyContent:"center",
+        padding:"40px 20px", textAlign:"center",
+      }}>
+        <style>{GLOBAL_CSS}</style>
+        <Confetti active={true}/>
+        {achievement && <AchievementToast key={achievement.key} achievement={achievement} taskName={achievement.taskName}/>}
+        <div style={{
+          fontSize:90, marginBottom:8,
+          animation:"pulse 1.5s ease-in-out infinite",
+          filter:"drop-shadow(0 8px 24px rgba(255,217,61,0.5))",
+        }}>🏆</div>
+        <h1 style={{
+          margin:"0 0 8px", fontSize:32, fontWeight:900, color:C.text,
+          letterSpacing:-1,
+        }}>YOU DID IT!</h1>
+        <p style={{margin:"0 0 24px",fontSize:16,color:C.soft,fontWeight:700}}>
+          Every single task. Done. 🎉
+        </p>
+        <div style={{display:"flex", gap:12, justifyContent:"center", marginBottom:28}}>
+          <div style={{
+            background:C.mustLight, borderRadius:14, padding:"14px 28px",
+            border:`2px solid ${C.must}`,
+          }}>
+            <div style={{fontSize:36,fontWeight:900,color:C.must}}>{completed.length}</div>
+            <div style={{fontSize:11,fontWeight:800,color:C.soft,letterSpacing:1}}>TASKS DONE</div>
+          </div>
+        </div>
+        <div style={{
+          background:"#1a1830",
+          borderRadius:16, padding:"16px 20px", marginBottom:24,
+          border:"1px solid rgba(255,215,0,0.2)",
+          maxWidth:340, width:"100%",
+        }}>
+          <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.6}}>
+            Your ADHD brain rolled its way through the chaos <span style={{color:C.must,fontWeight:900}}>and won.</span> Go do something fun — you earned it.
+          </div>
+        </div>
+        <button onClick={()=>{
+          setScreen("setup");
+          setResult(null);
+          setCompleted([]);
+          setRemovedFun([]);
+          setMustItems([]);
+          setFunItems([]);
+        }} style={btn(C.must,"#1a1000",{fontSize:16,padding:"14px 28px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.4), 0 0 16px rgba(255,215,0,0.3)"})}>
+          Start a New Day
+        </button>
+      </div>
+    );
+  }
+
   if (screen==="setup") {
     return (
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:"Nunito,sans-serif",padding:"24px 16px"}}>
@@ -732,12 +898,12 @@ export default function App() {
                   {mustTimedIds.has(item.id)&&(
                     <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
                       <span style={{fontSize:11,color:C.soft}}>Range:</span>
-                      <input type="text" inputMode="numeric" value={mustTMin[item.id]||10} min={1}
-                        onChange={e=>setMustTMin(p=>({...p,[item.id]:Number(e.target.value)}))}
+                      <input type="text" inputMode="numeric" value={mustTMin[item.id]??10}
+                        onChange={e=>{const v=e.target.value;if(v===""||/^\d+$/.test(v))setMustTMin(p=>({...p,[item.id]:v===""?"":Number(v)}))}}
                         style={{...inp(),width:50,flex:"none",textAlign:"center",padding:"4px 6px"}}/>
                       <span style={{fontSize:11,color:C.soft}}>–</span>
-                      <input type="text" inputMode="numeric" value={mustTMax[item.id]||20} min={1}
-                        onChange={e=>setMustTMax(p=>({...p,[item.id]:Number(e.target.value)}))}
+                      <input type="text" inputMode="numeric" value={mustTMax[item.id]??20}
+                        onChange={e=>{const v=e.target.value;if(v===""||/^\d+$/.test(v))setMustTMax(p=>({...p,[item.id]:v===""?"":Number(v)}))}}
                         style={{...inp(),width:50,flex:"none",textAlign:"center",padding:"4px 6px"}}/>
                       <span style={{fontSize:11,color:C.soft}}>min</span>
                     </div>
@@ -758,10 +924,10 @@ export default function App() {
             </div>
             <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:12,color:C.textDim,fontWeight:700}}>Break length:</span>
-              <input type="text" inputMode="numeric" value={funMin} min={1} max={funMax} onChange={e=>setFunMin(Number(e.target.value))}
+              <input type="text" inputMode="numeric" value={funMin} onChange={e=>{const v=e.target.value; if(v===""||/^\d+$/.test(v)) setFunMin(v===""?"":Number(v))}}
                 style={{...inp(),width:50,flex:"none",textAlign:"center"}}/>
               <span style={{fontSize:12,color:C.soft}}>to</span>
-              <input type="text" inputMode="numeric" value={funMax} min={funMin} max={120} onChange={e=>setFunMax(Number(e.target.value))}
+              <input type="text" inputMode="numeric" value={funMax} onChange={e=>{const v=e.target.value; if(v===""||/^\d+$/.test(v)) setFunMax(v===""?"":Number(v))}}
                 style={{...inp(),width:50,flex:"none",textAlign:"center"}}/>
               <span style={{fontSize:12,color:C.soft}}>min</span>
             </div>
@@ -781,23 +947,7 @@ export default function App() {
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
               <h2 style={{margin:0,fontSize:15,fontWeight:800,color:C.textDim}}>Settings</h2>
             </div>
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.soft,marginBottom:8,letterSpacing:2}}>RANDOMIZER</div>
-              <div style={{display:"flex",gap:8,overflowX:"auto"}}>
-                {[["dice","🎲 Dice"],["wheel","🎡 Wheel"],["slot","🎰 Slots"]].map(([v,l])=>(
-                  <button key={v} onClick={()=>setRandomizer(v)}
-                    style={btn(
-                      randomizer===v ? C.must : "rgba(255,255,255,0.09)",
-                      randomizer===v ? "#1a1000" : C.textDim,
-                      {fontSize:12,whiteSpace:"nowrap",flex:"1 0 auto",
-                       border:`1px solid ${randomizer===v?"rgba(255,215,0,0.5)":"rgba(255,215,0,0.15)"}`,
-                       boxShadow:randomizer===v?"0 4px 0 rgba(0,0,0,0.4), 0 0 12px rgba(255,215,0,0.3)":"0 4px 0 rgba(0,0,0,0.3)"}
-                    )}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
+
             <div>
               <div style={{fontSize:11,fontWeight:800,color:C.soft,marginBottom:8,letterSpacing:2}}>BREAK FREQUENCY</div>
               <div style={{display:"flex",gap:8}}>
@@ -817,7 +967,8 @@ export default function App() {
             </div>
           </div>
 
-          <button onClick={()=>{if(mustItems.length||funItems.length)setScreen("game");}}
+          <button onClick={()=>{if(mustItems.length||funItems.length){setScreen("game");window.scrollTo({top:0,behavior:"instant"});}}}
+
             disabled={!mustItems.length&&!funItems.length}
             style={btn(C.must,"#1a1000",{width:"100%",fontSize:16,padding:"14px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.5), 0 0 20px rgba(255,215,0,0.25)"})}>
             Let's Roll!
@@ -832,6 +983,7 @@ export default function App() {
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"Nunito,sans-serif",padding:"24px 16px"}}>
       <style>{GLOBAL_CSS}</style>
       <Confetti active={confetti}/>
+      {achievement && <AchievementToast key={achievement.key} achievement={achievement} taskName={achievement.taskName}/>}
 
       <div style={{maxWidth:520,margin:"0 auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
@@ -843,63 +995,7 @@ export default function App() {
             style={btn("rgba(255,255,255,0.08)",C.textDim,{fontSize:12,padding:"6px 14px",border:"1px solid rgba(255,255,255,0.15)",boxShadow:"none"})}>← Setup</button>
         </div>
 
-        {allDone && (
-          <div style={{
-            textAlign:"center", padding:"40px 20px",
-            animation:"pop 0.5s ease",
-          }}>
-            <Confetti active={true}/>
-            {/* Big trophy */}
-            <div style={{
-              fontSize:90, marginBottom:8,
-              animation:"pulse 1.5s ease-in-out infinite",
-              filter:"drop-shadow(0 8px 24px rgba(255,217,61,0.5))",
-            }}>🏆</div>
 
-            {/* Headline */}
-            <h1 style={{
-              margin:"0 0 8px", fontSize:32, fontWeight:900, color:C.text,
-              letterSpacing:-1,
-            }}>YOU DID IT!</h1>
-            <p style={{margin:"0 0 24px",fontSize:16,color:C.soft,fontWeight:700}}>
-              Every single task. Done. 🎉
-            </p>
-
-            {/* Stats — tasks only */}
-            <div style={{display:"flex", gap:12, justifyContent:"center", marginBottom:28}}>
-              <div style={{
-                background:C.mustLight, borderRadius:14, padding:"14px 28px",
-                border:`2px solid ${C.must}`,
-              }}>
-                <div style={{fontSize:36,fontWeight:900,color:C.must}}>{completed.length}</div>
-                <div style={{fontSize:11,fontWeight:800,color:C.soft,letterSpacing:1}}>TASKS DONE</div>
-              </div>
-            </div>
-
-            {/* Message — no line break mid-sentence */}
-            <div style={{
-              background:"#1a1830",
-              borderRadius:16, padding:"16px 20px", marginBottom:24,
-              border:"1px solid rgba(255,215,0,0.2)",
-            }}>
-              <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.6}}>
-                Your ADHD brain rolled its way through the chaos <span style={{color:C.must,fontWeight:900}}>and won.</span> Go do something fun — you earned it.
-              </div>
-            </div>
-
-            {/* Play again */}
-            <button onClick={()=>{
-              setScreen("setup");
-              setResult(null);
-              setCompleted([]);
-              setRemovedFun([]);
-              setMustItems([]);
-              setFunItems([]);
-            }} style={btn(C.must,"#1a1000",{fontSize:16,padding:"14px 28px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.4), 0 0 16px rgba(255,215,0,0.3)"})}>
-              Start a New Day
-            </button>
-          </div>
-        )}
 
         {result && (
           <div style={card({
@@ -944,24 +1040,7 @@ export default function App() {
 
         {!allDone && (
           <div style={card({textAlign:"center"})}>
-            {randomizer==="dice"  && <DiceBox     onResult={handleDiceRoll} items={allItems}/>}
-            {randomizer==="wheel" && <SpinWheel   onResult={handleRoll}     items={allItems}/>}
-            {randomizer==="slot"  && <SlotMachine onResult={handleRoll}     items={allItems}/>}
-
-            <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"center"}}>
-              {[["dice","🎲"],["wheel","🎡"],["slot","🎰"]].map(([v,e])=>(
-                <button key={v} onClick={()=>setRandomizer(v)}
-                  style={btn(
-                    randomizer===v ? C.must : "rgba(255,255,255,0.09)",
-                    randomizer===v ? "#1a1000" : C.textDim,
-                    {padding:"8px 0",fontSize:22,flex:"1 0 0",maxWidth:80,
-                     border:`1px solid ${randomizer===v?"rgba(255,215,0,0.5)":"rgba(255,215,0,0.15)"}`,
-                     boxShadow:randomizer===v?"0 4px 0 rgba(0,0,0,0.4), 0 0 12px rgba(255,215,0,0.3)":"0 4px 0 rgba(0,0,0,0.3)"}
-                  )}>
-                  {e}
-                </button>
-              ))}
-            </div>
+            <DiceBox onResult={handleDiceRoll} items={allItems}/>
           </div>
         )}
 
@@ -974,7 +1053,19 @@ export default function App() {
                   if(completed.includes(item.id)) {
                     setCompleted(p=>p.filter(id=>id!==item.id));
                   } else {
-                    setCompleted(p=>[...p,item.id]);
+                    setCompleted(p => {
+                      const next = [...p, item.id];
+                      const isAllDone = next.length === mustItems.length;
+                      const a = getAchievement(next.length, isAllDone);
+                      if (a) {
+                        setAchievement({ ...a, taskName: item.text, key: Date.now() });
+                        setTimeout(() => setAchievement(null), 10000);
+                      }
+                      if (isAllDone) {
+                        setTimeout(() => setScreen("celebration"), 50);
+                      }
+                      return next;
+                    });
                     setConfetti(true); setTimeout(()=>setConfetti(false),1800);
                   }
                 }}
