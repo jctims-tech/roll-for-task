@@ -1022,10 +1022,9 @@ export default function App() {
 
         {result && (
           <div style={card({
-            animation:"pop 0.3s ease",
+            animation:result.type==="fun"?"pop 0.3s ease, glowViolet 2.5s ease-in-out infinite":"pop 0.3s ease, glowGold 2.5s ease-in-out infinite",
             background:result.type==="fun" ? "#160e2e" : "#1a1200",
             border:`2px solid ${result.type==="fun"?C.fun:C.must}`,
-            animation:result.type==="fun"?"pop 0.3s ease, glowViolet 2.5s ease-in-out infinite":"pop 0.3s ease, glowGold 2.5s ease-in-out infinite",
             textAlign:"center",
           })}>
             <div style={{fontSize:42,marginBottom:8,filter:`drop-shadow(0 0 10px ${result.type==="fun"?"rgba(168,122,255,0.6)":"rgba(255,215,0,0.6)"})`}}>{result.type==="fun"?"✨":"⚔️"}</div>
