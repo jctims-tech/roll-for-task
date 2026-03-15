@@ -546,10 +546,9 @@ function DiceBox({ onResult, items }) {
       } else {
         d20.position.set(END_X,SURFACE_Y,END_Z);
         renderer.render(scene,camera);
-        // Pick random item from pool using modulo
-        const idx=Math.floor(Math.random()*items.length);
+        // Signal roll complete — parent picks from fresh pool
         busyRef.current=false; setRolling(false);
-        onResult(items[idx]);
+        onResult();
         const still=()=>{ rafRef.current=requestAnimationFrame(still); renderer.render(scene,camera); };
         still();
       }
@@ -610,6 +609,8 @@ export default function App() {
   const [result,     setResult]     = useState(null);
   const [completed,  setCompleted]  = useState([]);
   const [removedFun, setRemovedFun] = useState([]);
+  const completedRef  = useRef([]);
+  const removedFunRef = useRef([]);
   const [confetti,   setConfetti]   = useState(false);
   const [achievement, setAchievement] = useState(null);
   const achieveTimerRef = useRef(null);
@@ -673,15 +674,20 @@ export default function App() {
 
   // Dice picks from its own pool (must or fun based on break mode)
   const handleDiceRoll = () => {
-    // Always build fresh pool at roll time — ignore stale items prop from DiceBox
-    const freshMust = mustItems.filter(i => !completed.includes(i.id));
-    const freshFun  = funItems.filter(i => !removedFun.includes(i.id));
+    // Use refs to get truly current completed/removedFun at roll resolution time
+    const freshMust = mustItems.filter(i => !completedRef.current.includes(i.id));
+    const freshFun  = funItems.filter(i => !removedFunRef.current.includes(i.id));
     if (!freshMust.length && !freshFun.length) return;
 
     let pool;
     if (!freshMust.length) pool = freshFun;
     else if (!freshFun.length) pool = freshMust;
-    else pool = Math.random() < getFunChance(breakMode) ? freshFun : freshMust;
+    else {
+      const chance = breakMode === "chaos"
+        ? Math.random() * 0.45 + 0.05
+        : BREAK_MODES[breakMode].basePct;
+      pool = Math.random() < chance ? freshFun : freshMust;
+    }
     if (!pool.length) return;
 
     handleResult(pool[Math.floor(Math.random() * pool.length)]);
@@ -692,6 +698,7 @@ export default function App() {
     if (result.type==="must" && !result.keepInRotation) {
       setCompleted(p => {
         const next = [...p, result.id];
+        completedRef.current = next;
         const isAllDone = next.length === mustItems.length;
         const a = getAchievement(next.length, isAllDone);
         if (a) {
@@ -707,7 +714,7 @@ export default function App() {
       setConfetti(true); setTimeout(()=>setConfetti(false),1800);
     }
     if (result.type==="fun" && !result.keepInRotation) {
-      setRemovedFun(p=>[...p,result.id]);
+      setRemovedFun(p=>{const next=[...p,result.id]; removedFunRef.current=next; return next;});
     }
     setResult(null); setShowTimer(false); setTimerDone(false);
   };
@@ -1092,6 +1099,7 @@ export default function App() {
                   } else {
                     setCompleted(p => {
                       const next = [...p, item.id];
+                      completedRef.current = next;
                       const isAllDone = next.length === mustItems.length;
                       const a = getAchievement(next.length, isAllDone);
                       if (a) {
