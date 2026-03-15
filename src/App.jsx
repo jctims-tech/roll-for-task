@@ -69,8 +69,8 @@ const GLOBAL_CSS = `
   @keyframes glowViolet { 0%,100%{box-shadow:0 0 12px rgba(168,122,255,0.35),inset 0 1px 0 rgba(255,255,255,0.06)} 50%{box-shadow:0 0 28px rgba(168,122,255,0.6),inset 0 1px 0 rgba(255,255,255,0.06)} }
   @keyframes achieveSlide {
     0%   { transform: translateY(120px) scale(0.85); opacity:0; }
-    8%   { transform: translateY(-8px)  scale(1.03); opacity:1; }
-    12%  { transform: translateY(0px)   scale(1);    opacity:1; }
+    6%   { transform: translateY(-8px)  scale(1.03); opacity:1; }
+    9%   { transform: translateY(0px)   scale(1);    opacity:1; }
     88%  { transform: translateY(0px)   scale(1);    opacity:1; }
     100% { transform: translateY(120px) scale(0.9);  opacity:0; }
   }
@@ -127,7 +127,7 @@ function AchievementToast({ achievement, taskName }) {
       padding:"0 16px",
       boxSizing:"border-box",
       zIndex:9999,
-      animation:"achieveSlide 9s ease forwards",
+      animation:"achieveSlide 12s ease forwards",
       pointerEvents:"none",
     }}>
       <div style={{
@@ -152,14 +152,14 @@ function AchievementToast({ achievement, taskName }) {
         <div style={{flex:1, minWidth:0}}>
           {/* Header label */}
           <div style={{
-            fontSize:9, fontWeight:900, letterSpacing:"0.18em",
-            color:"#c8a030", marginBottom:4, textTransform:"uppercase",
-          }}>NEW ACHIEVEMENT!</div>
+            fontSize:13, fontWeight:900, letterSpacing:"0.16em",
+            color:"#FFD700", marginBottom:6, textTransform:"uppercase",
+          }}>⚔️ NEW ACHIEVEMENT!</div>
 
           {/* Title */}
           <div style={{
-            fontSize:17, fontWeight:900, color:"#ffffff",
-            lineHeight:1.2, marginBottom:6,
+            fontSize:20, fontWeight:900, color:"#ffffff",
+            lineHeight:1.2, marginBottom:7,
           }}>
             {achievement.title}
           </div>
@@ -369,10 +369,10 @@ function buildD20Surface(scene){
   const feltC=document.createElement("canvas"); feltC.width=feltC.height=1024;
   const fc=feltC.getContext("2d");
   // Lighter warm charcoal felt base
-  fc.fillStyle="#080808"; fc.fillRect(0,0,1024,1024);
+  fc.fillStyle="#040b05"; fc.fillRect(0,0,1024,1024);
   for(let i=0;i<50000;i++){
     const v=20+Math.random()*14;
-    fc.fillStyle=`rgba(${v},${v-1},${v-3},${Math.random()*0.06})`;
+    fc.fillStyle=`rgba(${v-4},${v},${v-4},${Math.random()*0.06})`;
     fc.fillRect(Math.random()*1024,Math.random()*1024,1,1);
   }
   // No radial spotlight — lamp handles lighting in 3D
@@ -404,7 +404,7 @@ function buildD20Tray(scene){
   const woodC=document.createElement("canvas"); woodC.width=woodC.height=256;
   const wc=woodC.getContext("2d");
   const wg=wc.createLinearGradient(0,0,256,0);
-  wg.addColorStop(0,"#0e0a06"); wg.addColorStop(0.5,"#130d07"); wg.addColorStop(1,"#0a0704");
+  wg.addColorStop(0,"#080502"); wg.addColorStop(0.5,"#0a0603"); wg.addColorStop(1,"#060401");
   wc.fillStyle=wg; wc.fillRect(0,0,256,256);
   for(let i=0;i<60;i++){
     const y=(i/60)*256+Math.random()*3;
@@ -419,7 +419,7 @@ function buildD20Tray(scene){
   }
   const woodTex=new THREE.CanvasTexture(woodC);
   const mat=new THREE.MeshLambertMaterial({map:woodTex,side:THREE.DoubleSide});
-  const rimMat=new THREE.MeshPhongMaterial({color:0x4a3c14,shininess:60,specular:new THREE.Color(0x6a5420)});
+  const rimMat=new THREE.MeshPhongMaterial({color:0x1a1008,shininess:15,specular:new THREE.Color(0x2a1a08)});
   [[0,H/2,D+T/2,W*2+T*2,H,T],[0,H/2,-D-T/2,W*2+T*2,H,T],[-W-T/2,H/2,0,T,H,D*2],[W+T/2,H/2,0,T,H,D*2]].forEach(([x,y,z,bw,bh,bd])=>{
     const wall=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),mat);
     wall.position.set(x,y,z); wall.castShadow=true; wall.receiveShadow=true; scene.add(wall);
@@ -450,7 +450,7 @@ function DiceBox({ onResult, items }) {
     const scene=new THREE.Scene();
     const camera=new THREE.PerspectiveCamera(52,W/H,0.1,100);
     camera.position.set(0,11.5,8.2); camera.lookAt(0,0,-0.8);
-    scene.add(new THREE.AmbientLight(0x1a1a22,2.4));
+    scene.add(new THREE.AmbientLight(0x0e1a0a,2.6));
     const lamp=new THREE.PointLight(0xfff5d0,9.0,40);
     lamp.position.set(0,12,2); lamp.castShadow=true;
     lamp.shadow.mapSize.set(2048,2048); lamp.shadow.bias=-0.001; scene.add(lamp);
@@ -470,13 +470,21 @@ function DiceBox({ onResult, items }) {
     scene.add(d20);
     renderer.render(scene,camera);
     ctxRef.current={renderer,scene,camera,d20,shadowMesh,SURFACE_Y};
+    let touchStartY=0;
+    const onTouchStart=(e)=>{ touchStartY=e.touches[0].clientY; };
     const onTap=()=>{ if(!busyRef.current) doRoll(); };
-    renderer.domElement.addEventListener("click",    onTap);
-    renderer.domElement.addEventListener("touchend", onTap,{passive:true});
+    const onTouchEnd=(e)=>{
+      const dy=Math.abs(e.changedTouches[0].clientY-touchStartY);
+      if(dy<10) onTap();
+    };
+    renderer.domElement.addEventListener("click",      onTap);
+    renderer.domElement.addEventListener("touchstart", onTouchStart,{passive:true});
+    renderer.domElement.addEventListener("touchend",   onTouchEnd,{passive:true});
     return ()=>{
       cancelAnimationFrame(rafRef.current);
-      renderer.domElement.removeEventListener("click",    onTap);
-      renderer.domElement.removeEventListener("touchend", onTap);
+      renderer.domElement.removeEventListener("click",      onTap);
+      renderer.domElement.removeEventListener("touchstart", onTouchStart);
+      renderer.domElement.removeEventListener("touchend",   onTouchEnd);
       if(el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
       renderer.dispose();
     };
@@ -557,7 +565,7 @@ function DiceBox({ onResult, items }) {
         boxShadow:"0 8px 40px rgba(0,0,0,0.6)",
       }}/>
       {!rolling && (
-        <div style={{marginTop:8,fontSize:10,color:"rgba(255,255,255,0.25)",fontWeight:800,letterSpacing:2}}>
+        <div style={{marginTop:10,fontSize:15,color:"rgba(255,215,0,0.6)",fontWeight:900,letterSpacing:3}}>
           TAP TO ROLL
         </div>
       )}
@@ -691,7 +699,7 @@ export default function App() {
         if (a) {
           setAchievement({ ...a, taskName: result.text, key: Date.now() });
           if(achieveTimerRef.current) clearTimeout(achieveTimerRef.current);
-          achieveTimerRef.current = setTimeout(() => setAchievement(null), 10000);
+          achieveTimerRef.current = setTimeout(() => setAchievement(null), 13000);
         }
         if (isAllDone) {
           setTimeout(() => setScreen("celebration"), 50);
@@ -768,7 +776,7 @@ export default function App() {
             BUILT FOR ADHD BRAINS
           </div>
           <div style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.5}}>
-            Mix must-dos with dopamine breaks, roll to decide, and bypass the freeze. No more "where do I even start" — just roll and go.
+            Mix must-dos with fun breaks, roll to decide, and bypass the freeze. No more "where do I even start" — just roll and go.
           </div>
         </div>
 
@@ -842,9 +850,6 @@ export default function App() {
           margin:"0 0 8px", fontSize:32, fontWeight:900, color:C.text,
           letterSpacing:-1,
         }}>YOU DID IT!</h1>
-        <p style={{margin:"0 0 24px",fontSize:16,color:C.soft,fontWeight:700}}>
-          Every single task. Done. 🎉
-        </p>
         <div style={{display:"flex", gap:12, justifyContent:"center", marginBottom:28}}>
           <div style={{
             background:C.mustLight, borderRadius:14, padding:"14px 28px",
@@ -1094,7 +1099,7 @@ export default function App() {
                       if (a) {
                         setAchievement({ ...a, taskName: item.text, key: Date.now() });
                         if(achieveTimerRef.current) clearTimeout(achieveTimerRef.current);
-                        achieveTimerRef.current = setTimeout(() => setAchievement(null), 10000);
+                        achieveTimerRef.current = setTimeout(() => setAchievement(null), 13000);
                       }
                       if (isAllDone) {
                         setTimeout(() => setScreen("celebration"), 50);
