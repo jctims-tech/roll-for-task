@@ -859,7 +859,7 @@ export default function App() {
           maxWidth:340, width:"100%",
         }}>
           <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.6}}>
-            Your ADHD brain rolled its way through the chaos <span style={{color:C.must,fontWeight:900}}>and won.</span> Go do something fun — you earned it.
+            Your brain fought hard today. Getting started was the hardest part. Staying on track was the second. You did both. That's genuinely huge — go enjoy the rest of your day, you earned it.
           </div>
         </div>
         <button onClick={()=>{
