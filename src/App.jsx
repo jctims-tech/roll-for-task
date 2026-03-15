@@ -672,21 +672,19 @@ export default function App() {
   };
 
   // Dice picks from its own pool (must or fun based on break mode)
-  const handleDiceRoll = (pickedByFace) => {
-    // The die rolled a face value that maps to allItems[face-1]
-    // But we should still respect the break mode pool logic
-    // So: use the face to pick FROM the current pool
-    const pool = buildPool();
+  const handleDiceRoll = () => {
+    // Always build fresh pool at roll time — ignore stale items prop from DiceBox
+    const freshMust = mustItems.filter(i => !completed.includes(i.id));
+    const freshFun  = funItems.filter(i => !removedFun.includes(i.id));
+    if (!freshMust.length && !freshFun.length) return;
+
+    let pool;
+    if (!freshMust.length) pool = freshFun;
+    else if (!freshFun.length) pool = freshMust;
+    else pool = Math.random() < getFunChance(breakMode) ? freshFun : freshMust;
     if (!pool.length) return;
-    // Map face index into pool (wraps if pool is smaller)
-    const idx = allItems.indexOf(pickedByFace);
-    // If picked item is in active pool, use it; otherwise pick randomly from pool
-    if (pool.includes(pickedByFace)) {
-      handleResult(pickedByFace);
-    } else {
-      // Face landed on a completed/removed item — reroll from pool
-      handleResult(pool[Math.floor(Math.random() * pool.length)]);
-    }
+
+    handleResult(pool[Math.floor(Math.random() * pool.length)]);
   };
 
   const markDone = () => {
