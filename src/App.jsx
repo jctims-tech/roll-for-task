@@ -446,8 +446,7 @@ function DiceBox({ onResult, items }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
     renderer.shadowMap.enabled=true;
     if(THREE.SRGBColorSpace) renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure=1.2;
+    renderer.toneMappingExposure=1.8;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene=new THREE.Scene();
