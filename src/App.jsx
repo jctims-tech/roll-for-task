@@ -327,8 +327,8 @@ function makeD20FaceTex(number){
   const ctx=cv.getContext("2d");
   ctx.fillStyle="#1a0840";
   ctx.beginPath(); ctx.moveTo(size/2,8); ctx.lineTo(size-8,size-8); ctx.lineTo(8,size-8); ctx.closePath(); ctx.fill();
-  [[size*.38,size*.42,size*.26,"rgba(130,65,210,0.24)"],[size*.62,size*.58,size*.20,"rgba(165,85,255,0.19)"],
-   [size*.44,size*.68,size*.18,"rgba(95,42,185,0.26)"],[size*.58,size*.32,size*.16,"rgba(185,105,255,0.13)"],
+  [[size*.38,size*.42,size*.26,"rgba(110,50,180,0.14)"],[size*.62,size*.58,size*.20,"rgba(140,70,220,0.11)"],
+   [size*.44,size*.68,size*.18,"rgba(80,35,160,0.15)"],[size*.58,size*.32,size*.16,"rgba(160,85,220,0.08)"],
   ].forEach(([x,y,r,color])=>{
     const g=ctx.createRadialGradient(x,y,0,x,y,r);
     g.addColorStop(0,color); g.addColorStop(1,"rgba(0,0,0,0)");
@@ -339,10 +339,10 @@ function makeD20FaceTex(number){
   const fs=number>=10?128:158;
   ctx.font=`900 ${fs}px Arial Black,Arial,sans-serif`;
   ctx.textAlign="center"; ctx.textBaseline="middle";
-  ctx.shadowColor="rgba(0,0,0,0.65)"; ctx.shadowBlur=5; ctx.shadowOffsetX=2; ctx.shadowOffsetY=3;
-  ctx.fillStyle="#b8901e"; ctx.fillText(String(number),size/2,size*.60);
+  ctx.shadowColor="rgba(0,0,0,0.8)"; ctx.shadowBlur=3; ctx.shadowOffsetX=1; ctx.shadowOffsetY=2;
+  ctx.fillStyle="#8a6810"; ctx.fillText(String(number),size/2,size*.60);
   ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0;
-  ctx.fillStyle="#d4aa40"; ctx.fillText(String(number),size/2,size*.60);
+  ctx.fillStyle="#e8c84a"; ctx.fillText(String(number),size/2,size*.60);
   return new THREE.CanvasTexture(cv);
 }
 
@@ -368,23 +368,22 @@ function buildD20Mesh(){
 function buildD20Surface(scene){
   const feltC=document.createElement("canvas"); feltC.width=feltC.height=1024;
   const fc=feltC.getContext("2d");
-  fc.fillStyle="#0c0c0c"; fc.fillRect(0,0,1024,1024);
+  // Lighter warm charcoal felt base
+  fc.fillStyle="#080808"; fc.fillRect(0,0,1024,1024);
   for(let i=0;i<50000;i++){
-    const v=14+Math.random()*14;
-    fc.fillStyle=`rgba(${v},${v},${v+3},${Math.random()*0.05})`;
+    const v=20+Math.random()*14;
+    fc.fillStyle=`rgba(${v},${v-1},${v-3},${Math.random()*0.06})`;
     fc.fillRect(Math.random()*1024,Math.random()*1024,1,1);
   }
-  const cg=fc.createRadialGradient(512,512,50,512,512,500);
-  cg.addColorStop(0,"rgba(50,40,60,0.3)"); cg.addColorStop(1,"rgba(0,0,0,0)");
-  fc.fillStyle=cg; fc.fillRect(0,0,1024,1024);
+  // No radial spotlight — lamp handles lighting in 3D
   const feltTex=new THREE.CanvasTexture(feltC);
   feltTex.wrapS=THREE.RepeatWrapping; feltTex.wrapT=THREE.RepeatWrapping; feltTex.repeat.set(3,2);
   const surface=new THREE.Mesh(new THREE.PlaneGeometry(20,14),new THREE.MeshLambertMaterial({map:feltTex}));
   surface.rotation.x=-Math.PI/2; surface.position.y=0; scene.add(surface);
   const vc=document.createElement("canvas"); vc.width=vc.height=512;
   const vctx=vc.getContext("2d");
-  const vg=vctx.createRadialGradient(256,256,60,256,256,360);
-  vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.7)");
+  const vg=vctx.createRadialGradient(256,256,80,256,256,360);
+  vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.55)");
   vctx.fillStyle=vg; vctx.fillRect(0,0,512,512);
   const vignette=new THREE.Mesh(new THREE.PlaneGeometry(20,14),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(vc),transparent:true,depthWrite:false}));
   vignette.rotation.x=-Math.PI/2; vignette.position.y=0.01; scene.add(vignette);
@@ -401,26 +400,26 @@ function buildD20Shadow(scene){
 }
 
 function buildD20Tray(scene){
-  const W=9.0,D=6.0,H=1.1,T=0.25;
+  const W=9.0,D=6.0,H=2.2,T=0.25;
   const woodC=document.createElement("canvas"); woodC.width=woodC.height=256;
   const wc=woodC.getContext("2d");
   const wg=wc.createLinearGradient(0,0,256,0);
-  wg.addColorStop(0,"#2e1508"); wg.addColorStop(0.5,"#3a1c0a"); wg.addColorStop(1,"#251005");
+  wg.addColorStop(0,"#0e0a06"); wg.addColorStop(0.5,"#130d07"); wg.addColorStop(1,"#0a0704");
   wc.fillStyle=wg; wc.fillRect(0,0,256,256);
   for(let i=0;i<60;i++){
     const y=(i/60)*256+Math.random()*3;
     wc.beginPath(); wc.moveTo(0,y);
     wc.bezierCurveTo(64,y+Math.random()*10-5,192,y+Math.random()*10-5,256,y);
-    wc.strokeStyle=`rgba(${10+Math.random()*12},${4+Math.random()*6},${1+Math.random()*3},${0.25+Math.random()*0.3})`;
+    wc.strokeStyle=`rgba(${6+Math.random()*8},${3+Math.random()*4},${1+Math.random()*2},${0.2+Math.random()*0.25})`;
     wc.lineWidth=0.6+Math.random()*1.6; wc.stroke();
   }
   for(let i=0;i<120;i++){
-    wc.fillStyle=`rgba(8,3,1,${Math.random()*0.18})`;
+    wc.fillStyle=`rgba(5,2,1,${Math.random()*0.15})`;
     wc.beginPath(); wc.arc(Math.random()*256,Math.random()*256,Math.random()*2,0,Math.PI*2); wc.fill();
   }
   const woodTex=new THREE.CanvasTexture(woodC);
   const mat=new THREE.MeshLambertMaterial({map:woodTex,side:THREE.DoubleSide});
-  const rimMat=new THREE.MeshPhongMaterial({color:0x8a6515,shininess:20,specular:new THREE.Color(0x4a3508)});
+  const rimMat=new THREE.MeshPhongMaterial({color:0x4a3c14,shininess:60,specular:new THREE.Color(0x6a5420)});
   [[0,H/2,D+T/2,W*2+T*2,H,T],[0,H/2,-D-T/2,W*2+T*2,H,T],[-W-T/2,H/2,0,T,H,D*2],[W+T/2,H/2,0,T,H,D*2]].forEach(([x,y,z,bw,bh,bd])=>{
     const wall=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),mat);
     wall.position.set(x,y,z); wall.castShadow=true; wall.receiveShadow=true; scene.add(wall);
@@ -450,18 +449,19 @@ function DiceBox({ onResult, items }) {
     el.appendChild(renderer.domElement);
     const scene=new THREE.Scene();
     const camera=new THREE.PerspectiveCamera(52,W/H,0.1,100);
-    camera.position.set(0,10,6); camera.lookAt(0,0,0);
-    scene.add(new THREE.AmbientLight(0x3a2808,2.0));
-    const lamp=new THREE.PointLight(0xfff5d0,5.0,35);
+    camera.position.set(0,11.5,8.2); camera.lookAt(0,0,-0.8);
+    scene.add(new THREE.AmbientLight(0x1a1a22,2.4));
+    const lamp=new THREE.PointLight(0xfff5d0,9.0,40);
     lamp.position.set(0,12,2); lamp.castShadow=true;
     lamp.shadow.mapSize.set(2048,2048); lamp.shadow.bias=-0.001; scene.add(lamp);
-    const fill=new THREE.DirectionalLight(0xffe8c0,0.6);
+    const fill=new THREE.DirectionalLight(0xffe8c0,1.2);
     fill.position.set(2,6,8); scene.add(fill);
-    const acc=new THREE.PointLight(0x6622bb,0.5,20);
+    const acc=new THREE.PointLight(0x4422aa,0.8,22);
     acc.position.set(-3,5,-6); scene.add(acc);
     buildD20Surface(scene);
     buildD20Tray(scene);
     const shadowMesh=buildD20Shadow(scene);
+    shadowMesh.material.opacity=0;
     const SURFACE_Y=1.8;
     const d20=buildD20Mesh();
     d20.scale.setScalar(1.8);
@@ -487,7 +487,8 @@ function DiceBox({ onResult, items }) {
     const {renderer,scene,camera,d20,shadowMesh,SURFACE_Y}=ctxRef.current;
     busyRef.current=true; setRolling(true);
     const fromLeft=Math.random()>0.5;
-    const START_X=fromLeft?-18:18;
+    const START_X=fromLeft?-11:11;
+    const START_HEIGHT=2.8;
     const END_X=(Math.random()-0.5)*1.5;
     const END_Z=(Math.random()-0.5)*1.2;
     const travelDir=fromLeft?1:-1;
@@ -497,7 +498,7 @@ function DiceBox({ onResult, items }) {
     d20.position.set(START_X,SURFACE_Y,END_Z);
     try{
       const ac=new(window.AudioContext||window.webkitAudioContext)();
-      d20PlayRoll(ac);
+      setTimeout(()=>{try{d20PlayRoll(ac);}catch(e){}},480);
       setTimeout(()=>{try{d20PlayThud(ac);}catch(e){}},1900);
     }catch(e){}
     const ROLL_DUR=1700, SETTLE_DUR=350, TOTAL=ROLL_DUR+SETTLE_DUR;
@@ -512,7 +513,8 @@ function DiceBox({ onResult, items }) {
         const speed=1-ease;
         d20.position.x=START_X+(END_X-START_X)*ease;
         d20.position.z=END_Z;
-        d20.position.y=SURFACE_Y+Math.abs(Math.sin(rp*Math.PI*6))*0.28*speed;
+        const entryArc=START_HEIGHT*(1-ease);
+        d20.position.y=SURFACE_Y+entryArc+Math.abs(Math.sin(rp*Math.PI*6))*0.28*speed;
         d20.rotation.z=TOTAL_Z*ease;
         d20.rotation.x=wobbleX*Math.sin(rp*Math.PI*4)*speed;
         d20.rotation.y=wobbleY*Math.sin(rp*Math.PI*3)*speed;
