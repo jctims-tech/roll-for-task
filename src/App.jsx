@@ -604,6 +604,7 @@ export default function App() {
   const [removedFun, setRemovedFun] = useState([]);
   const [confetti,   setConfetti]   = useState(false);
   const [achievement, setAchievement] = useState(null);
+  const achieveTimerRef = useRef(null);
   const [achieveTask, setAchieveTask] = useState("");
   const [showAchieve, setShowAchieve] = useState(false);
   const [showTimer,  setShowTimer]  = useState(false);
@@ -689,7 +690,8 @@ export default function App() {
         const a = getAchievement(next.length, isAllDone);
         if (a) {
           setAchievement({ ...a, taskName: result.text, key: Date.now() });
-          setTimeout(() => setAchievement(null), 10000);
+          if(achieveTimerRef.current) clearTimeout(achieveTimerRef.current);
+          achieveTimerRef.current = setTimeout(() => setAchievement(null), 10000);
         }
         if (isAllDone) {
           setTimeout(() => setScreen("celebration"), 50);
@@ -923,6 +925,11 @@ export default function App() {
                 </div>
               ))}
             </div>
+            {mustItems.length>=2&&(
+              <div style={{marginTop:10,fontSize:11,color:"rgba(255,215,0,0.45)",fontWeight:700,lineHeight:1.5}}>
+                🎲 Fun fact: the more tasks you add, the more unpredictable the roll — and the sharper the dopamine hit when the die lands. 😉
+              </div>
+            )}
           </div>
 
           <div style={card()}>
@@ -942,6 +949,9 @@ export default function App() {
               <input type="text" inputMode="numeric" value={funMax} onChange={e=>{const v=e.target.value; if(v===""||/^\d+$/.test(v)) setFunMax(v===""?"":Number(v))}}
                 style={{...inp(),width:50,flex:"none",textAlign:"center"}}/>
               <span style={{fontSize:12,color:C.soft}}>min</span>
+            </div>
+            <div style={{fontSize:11,color:"rgba(168,122,255,0.5)",fontWeight:700,lineHeight:1.5,marginBottom:8}}>
+              🔬 5–15 min is the research-backed sweet spot for attention recovery. 😉
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {funItems.map(item=>(
@@ -1083,7 +1093,8 @@ export default function App() {
                       const a = getAchievement(next.length, isAllDone);
                       if (a) {
                         setAchievement({ ...a, taskName: item.text, key: Date.now() });
-                        setTimeout(() => setAchievement(null), 10000);
+                        if(achieveTimerRef.current) clearTimeout(achieveTimerRef.current);
+                        achieveTimerRef.current = setTimeout(() => setAchievement(null), 10000);
                       }
                       if (isAllDone) {
                         setTimeout(() => setScreen("celebration"), 50);
