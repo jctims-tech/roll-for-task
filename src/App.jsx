@@ -445,8 +445,6 @@ function DiceBox({ onResult, items }) {
     renderer.setSize(W,H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
     renderer.shadowMap.enabled=true;
-    if(THREE.SRGBColorSpace) renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.toneMappingExposure=1.8;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene=new THREE.Scene();
@@ -1027,7 +1025,7 @@ export default function App() {
         {result && (
           <div style={card({
             animation:result.type==="fun"?"pop 0.3s ease, glowViolet 2.5s ease-in-out infinite":"pop 0.3s ease, glowGold 2.5s ease-in-out infinite",
-            background:result.type==="fun" ? "#160e2e" : "#1a1200",
+            background:result.type==="fun" ? "#160e2e" : "#12101e",
             border:`2px solid ${result.type==="fun"?C.fun:C.must}`,
             textAlign:"center",
           })}>
