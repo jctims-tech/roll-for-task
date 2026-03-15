@@ -1,4 +1,4 @@
- import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
 
 const GOLD = "#FFD700";
@@ -445,6 +445,9 @@ function DiceBox({ onResult, items }) {
     renderer.setSize(W,H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
     renderer.shadowMap.enabled=true;
+    if(THREE.SRGBColorSpace) renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=1.2;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     const scene=new THREE.Scene();
