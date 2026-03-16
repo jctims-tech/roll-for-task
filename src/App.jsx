@@ -558,21 +558,31 @@ function DiceBox({ onResult, items }) {
 
   return (
     <div style={{textAlign:"center"}}>
-      <div ref={mountRef} style={{
-        width:"100%", height:220, borderRadius:12, overflow:"hidden",
-        cursor:rolling?"wait":"pointer",
-        boxShadow:"0 8px 40px rgba(0,0,0,0.6)",
-      }}/>
-      {!rolling && (
-        <div style={{marginTop:10,fontSize:15,color:"rgba(255,215,0,0.6)",fontWeight:900,letterSpacing:3}}>
-          TAP TO ROLL
-        </div>
-      )}
-      {rolling && (
-        <div style={{marginTop:8,fontSize:10,color:"rgba(200,191,255,0.4)",fontWeight:800,letterSpacing:2}}>
-          ROLLING...
-        </div>
-      )}
+      <div style={{position:"relative", width:"100%"}}>
+        <div ref={mountRef} style={{
+          width:"100%", height:220, borderRadius:12, overflow:"hidden",
+          cursor:rolling?"wait":"pointer",
+          boxShadow:"0 8px 40px rgba(0,0,0,0.6)",
+        }}/>
+        {!rolling && (
+          <div style={{
+            position:"absolute", bottom:12, left:0, right:0,
+            fontSize:13, color:"rgba(255,215,0,0.7)", fontWeight:900, letterSpacing:3,
+            pointerEvents:"none",
+          }}>
+            TAP TO ROLL
+          </div>
+        )}
+        {rolling && (
+          <div style={{
+            position:"absolute", bottom:12, left:0, right:0,
+            fontSize:10, color:"rgba(200,191,255,0.4)", fontWeight:800, letterSpacing:2,
+            pointerEvents:"none",
+          }}>
+            ROLLING...
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -618,6 +628,7 @@ export default function App() {
   const [removedFun, setRemovedFun] = useState(()=>loadSaved("rft_removedFun",[]));
   const completedRef  = useRef([]);
   const removedFunRef = useRef([]);
+  const firstRollDone = useRef(false);
   const [confetti,   setConfetti]   = useState(false);
   const [achievement, setAchievement] = useState(null);
   const achieveTimerRef = useRef(null);
@@ -625,6 +636,13 @@ export default function App() {
   // Sync refs with restored state on mount
   useEffect(()=>{ completedRef.current = completed; }, []);
   useEffect(()=>{ removedFunRef.current = removedFun; }, []);
+
+  // On restore, if all must-dos are completed redirect to celebration instead of empty game screen
+  useEffect(()=>{
+    if (screen === "game" && mustItems.length > 0 && mustItems.every(i => completed.includes(i.id))) {
+      setScreen("celebration");
+    }
+  }, []);
 
   // Persist session state to localStorage whenever it changes
   useEffect(()=>{ try { localStorage.setItem("rft_screen", JSON.stringify(screen==="celebration"?"game":screen)); } catch{} }, [screen]);
@@ -709,6 +727,7 @@ export default function App() {
     let pool;
     if (!freshMust.length) pool = freshFun;
     else if (!freshFun.length) pool = freshMust;
+    else if (!firstRollDone.current) pool = freshMust; // never a break on the very first roll
     else {
       const chance = breakMode === "chaos"
         ? Math.random() * 0.45 + 0.05
@@ -717,6 +736,7 @@ export default function App() {
     }
     if (!pool.length) return;
 
+    firstRollDone.current = true;
     handleResult(pool[Math.floor(Math.random() * pool.length)]);
   };
 
@@ -820,8 +840,8 @@ export default function App() {
           {[["✅","Add your tasks"],["✨","Add dopamine breaks"],[null,"Roll the d20"]].map(([e,t])=>(
             <div key={t} style={{
               display:"flex", alignItems:"center", gap:6,
-              background:"rgba(255,255,255,0.06)", borderRadius:10,
-              padding:"7px 12px", fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.8)",
+              fontSize:12, fontWeight:700, color:"rgba(255,255,255,0.45)",
+              pointerEvents:"none", userSelect:"none",
             }}>
               {e
                 ? <span style={{fontSize:16}}>{e}</span>
@@ -830,6 +850,15 @@ export default function App() {
               {t}
             </div>
           ))}
+        </div>
+
+        {/* CTA hint */}
+        <div style={{
+          marginTop:24, fontSize:13, color:"rgba(255,255,255,0.5)",
+          fontWeight:700, lineHeight:1.5, maxWidth:300, textAlign:"center",
+          animation:"fadeUp 0.6s ease 0.42s both",
+        }}>
+          Tap <span style={{color:"rgba(255,215,0,0.8)"}}>Let's Roll</span> to add your tasks, dopamine breaks, and get rolling on your day!
         </div>
 
         {/* CTA */}
@@ -856,6 +885,16 @@ export default function App() {
           onMouseOut={e=>e.target.style.color="rgba(255,215,0,0.45)"}
         >
           Why does this work? →
+        </a>
+        <a href="mailto:rollfortask@gmail.com" style={{
+          marginTop:8, fontSize:11, color:"rgba(255,255,255,0.2)",
+          fontWeight:700, textDecoration:"none", letterSpacing:0.3,
+          animation:"fadeUp 0.6s ease 0.6s both", display:"block",
+        }}
+          onMouseOver={e=>e.target.style.color="rgba(255,255,255,0.45)"}
+          onMouseOut={e=>e.target.style.color="rgba(255,255,255,0.2)"}
+        >
+          Share feedback →
         </a>
       </div>
     );
@@ -912,9 +951,24 @@ export default function App() {
           setFunMin(5); setFunMax(15);
           setMustTimedIds(new Set());
           setMustTMin({}); setMustTMax({});
+          firstRollDone.current = false;
+          completedRef.current = [];
+          removedFunRef.current = [];
           try { ["rft_mustItems","rft_funItems","rft_breakMode","rft_funMin","rft_funMax","rft_mustTimedIds","rft_mustTMin","rft_mustTMax","rft_screen","rft_completed","rft_removedFun","rft_result"].forEach(k=>localStorage.removeItem(k)); } catch{}
         }} style={btn(C.must,"#1a1000",{fontSize:16,padding:"14px 28px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.4), 0 0 16px rgba(255,215,0,0.3)"})}>
-          Start a New Day
+          Start Fresh
+        </button>
+        <button onClick={()=>{
+          setResult(null);
+          setCompleted([]);
+          setRemovedFun([]);
+          firstRollDone.current = false;
+          completedRef.current = [];
+          removedFunRef.current = [];
+          setScreen("setup");
+          try { ["rft_screen","rft_completed","rft_removedFun","rft_result"].forEach(k=>localStorage.removeItem(k)); } catch{}
+        }} style={btn("rgba(255,255,255,0.07)","rgba(255,255,255,0.7)",{fontSize:14,padding:"12px 28px",fontWeight:800,border:"1px solid rgba(255,255,255,0.15)"})}> 
+          Edit My List
         </button>
       </div>
     );
@@ -947,13 +1001,13 @@ export default function App() {
                     <span style={{flex:1,fontSize:13,fontWeight:700,color:C.text}}>{item.text}</span>
                     <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.soft,cursor:"pointer",whiteSpace:"nowrap"}}>
                       <input type="checkbox" checked={mustTimedIds.has(item.id)} onChange={()=>toggleTimed(item.id)} style={{accentColor:C.must}}/>
-                      ⏱ Time limit
+                      ⏱ Add time limit
                     </label>
                     <span onClick={()=>removeMust(item.id)} style={{cursor:"pointer",color:C.soft,fontSize:16}}>×</span>
                   </div>
                   {mustTimedIds.has(item.id)&&(
                     <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
-                      <span style={{fontSize:11,color:C.soft}}>Range:</span>
+                      <span style={{fontSize:11,color:C.soft}}>Random between:</span>
                       <input type="text" inputMode="numeric" value={mustTMin[item.id]??10}
                         onChange={e=>{const v=e.target.value;if(v===""||/^\d+$/.test(v))setMustTMin(p=>({...p,[item.id]:v===""?"":Number(v)}))}}
                         style={{...inp(),width:50,flex:"none",textAlign:"center",padding:"4px 6px"}}/>
@@ -978,13 +1032,16 @@ export default function App() {
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
               <span>✨</span><h2 style={{margin:0,fontSize:15,fontWeight:800,color:C.fun}}>Dopamine Breaks</h2>
             </div>
+            <div style={{fontSize:11,color:"rgba(168,122,255,0.5)",fontWeight:700,lineHeight:1.5,marginBottom:10}}>
+              Breaks stay in rotation and repeat throughout your session.
+            </div>
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               <input value={funInput} onChange={e=>setFunInput(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&addFun()} placeholder="e.g. Read my book" style={inp()}/>
               <button onClick={addFun} style={btn(C.fun,"white",{boxShadow:"0 3px 0 rgba(0,0,0,0.4), 0 0 14px rgba(168,122,255,0.45)"})}>Add</button>
             </div>
             <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:12,color:C.textDim,fontWeight:700}}>Break length:</span>
+              <span style={{fontSize:12,color:C.textDim,fontWeight:700}}>Random break length between:</span>
               <input type="text" inputMode="numeric" value={funMin} onChange={e=>{const v=e.target.value; if(v===""||/^\d+$/.test(v)) setFunMin(v===""?"":Number(v))}}
                 style={{...inp(),width:50,flex:"none",textAlign:"center"}}/>
               <span style={{fontSize:12,color:C.soft}}>to</span>
@@ -993,16 +1050,15 @@ export default function App() {
               <span style={{fontSize:12,color:C.soft}}>min</span>
             </div>
             <div style={{fontSize:11,color:"rgba(168,122,255,0.5)",fontWeight:700,lineHeight:1.5,marginBottom:8}}>
-              🔬 5–15 min is the research-backed sweet spot for attention recovery. 😉
+              🔬 5–15 min is the research-backed sweet spot for attention recovery — feel free to adjust. 😉
             </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {funItems.map(item=>(
-                <span key={item.id} style={{background:"rgba(168,122,255,0.15)",color:C.fun,border:"1px solid rgba(168,122,255,0.4)",borderRadius:20,
-                  padding:"4px 10px",fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center"}}>
-                  {item.text}
+                <div key={item.id} style={{background:"rgba(168,122,255,0.1)",border:"1px solid rgba(168,122,255,0.25)",borderLeft:"3px solid rgba(168,122,255,0.7)",borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{flex:1,fontSize:13,fontWeight:700,color:C.text}}>{item.text}</span>
                   <span onClick={()=>setFunItems(p=>p.filter(i=>i.id!==item.id))}
-                    style={{marginLeft:6,cursor:"pointer",opacity:0.6}}>×</span>
-                </span>
+                    style={{cursor:"pointer",color:C.soft,fontSize:16}}>×</span>
+                </div>
               ))}
             </div>
           </div>
@@ -1049,6 +1105,15 @@ export default function App() {
             onMouseOut={e=>e.target.style.color="rgba(255,215,0,0.4)"}
           >
             Why does this work? →
+          </a>
+          <a href="mailto:rollfortask@gmail.com" style={{
+            fontSize:11, color:"rgba(255,255,255,0.2)",
+            fontWeight:700, textDecoration:"none", letterSpacing:0.3,
+          }}
+            onMouseOver={e=>e.target.style.color="rgba(255,255,255,0.45)"}
+            onMouseOut={e=>e.target.style.color="rgba(255,255,255,0.2)"}
+          >
+            Share feedback →
           </a>
         </div>
       </div>
@@ -1101,13 +1166,13 @@ export default function App() {
                 <input type="checkbox" checked={result.keepInRotation}
                   onChange={()=>setResult(r=>({...r,keepInRotation:!r.keepInRotation}))}
                   style={{accentColor:result.type==="fun"?C.fun:C.must,width:16,height:16}}/>
-                <div style={{fontSize:12,fontWeight:800,color:C.text}}>Keep in rotation</div>
+                <div style={{fontSize:12,fontWeight:800,color:C.text}}>Keep in rotation <span style={{fontSize:11,fontWeight:700,color:C.soft}}>(won't mark as complete)</span></div>
               </label>
             </div>
 
             <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:10}}>
               <button onClick={markDone} style={btn(result.type==="fun"?C.fun:C.must,result.type==="fun"?"white":"#1a1000",{boxShadow:`0 4px 0 rgba(0,0,0,0.4), 0 0 14px ${result.type==="fun"?"rgba(168,122,255,0.4)":"rgba(255,215,0,0.4)"}`})}>
-                {result.type==="fun"?"Enjoy! ✨":"Done! ✅"}
+                {result.type==="fun"?"Done! ✨":"Done! ✅"}
               </button>
               <button onClick={()=>setResult(null)} style={btn("rgba(255,255,255,0.08)",C.textDim,{border:"1px solid rgba(255,255,255,0.12)"})}>Skip</button>
             </div>
