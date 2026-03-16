@@ -595,17 +595,24 @@ function Tag({ type }) {
 // ── ACHIEVEMENTS ──────────────────────────────────────────────────────────────
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const loadSaved = (key, fallback) => {
+    try {
+      const v = localStorage.getItem(key);
+      return v !== null ? JSON.parse(v) : fallback;
+    } catch { return fallback; }
+  };
+
   const [screen,     setScreen]     = useState("landing");
   const [mustInput,  setMustInput]  = useState("");
   const [funInput,   setFunInput]   = useState("");
-  const [funMin,     setFunMin]     = useState(5);
-  const [funMax,     setFunMax]     = useState(15);
-  const [mustItems,  setMustItems]  = useState([]);
-  const [funItems,   setFunItems]   = useState([]);
-  const [breakMode,  setBreakMode]  = useState("balanced");
-  const [mustTimedIds, setMustTimedIds] = useState(new Set());
-  const [mustTMin,   setMustTMin]   = useState({});
-  const [mustTMax,   setMustTMax]   = useState({});
+  const [funMin,     setFunMin]     = useState(()=>loadSaved("rft_funMin",5));
+  const [funMax,     setFunMax]     = useState(()=>loadSaved("rft_funMax",15));
+  const [mustItems,  setMustItems]  = useState(()=>loadSaved("rft_mustItems",[]));
+  const [funItems,   setFunItems]   = useState(()=>loadSaved("rft_funItems",[]));
+  const [breakMode,  setBreakMode]  = useState(()=>loadSaved("rft_breakMode","balanced"));
+  const [mustTimedIds, setMustTimedIds] = useState(()=>new Set(loadSaved("rft_mustTimedIds",[])));
+  const [mustTMin,   setMustTMin]   = useState(()=>loadSaved("rft_mustTMin",{}));
+  const [mustTMax,   setMustTMax]   = useState(()=>loadSaved("rft_mustTMax",{}));
   const [result,     setResult]     = useState(null);
   const [completed,  setCompleted]  = useState([]);
   const [removedFun, setRemovedFun] = useState([]);
@@ -614,6 +621,16 @@ export default function App() {
   const [confetti,   setConfetti]   = useState(false);
   const [achievement, setAchievement] = useState(null);
   const achieveTimerRef = useRef(null);
+
+  // Persist setup state to localStorage whenever it changes
+  useEffect(()=>{ try { localStorage.setItem("rft_mustItems", JSON.stringify(mustItems)); } catch{} }, [mustItems]);
+  useEffect(()=>{ try { localStorage.setItem("rft_funItems", JSON.stringify(funItems)); } catch{} }, [funItems]);
+  useEffect(()=>{ try { localStorage.setItem("rft_breakMode", JSON.stringify(breakMode)); } catch{} }, [breakMode]);
+  useEffect(()=>{ try { localStorage.setItem("rft_funMin", JSON.stringify(funMin)); } catch{} }, [funMin]);
+  useEffect(()=>{ try { localStorage.setItem("rft_funMax", JSON.stringify(funMax)); } catch{} }, [funMax]);
+  useEffect(()=>{ try { localStorage.setItem("rft_mustTimedIds", JSON.stringify([...mustTimedIds])); } catch{} }, [mustTimedIds]);
+  useEffect(()=>{ try { localStorage.setItem("rft_mustTMin", JSON.stringify(mustTMin)); } catch{} }, [mustTMin]);
+  useEffect(()=>{ try { localStorage.setItem("rft_mustTMax", JSON.stringify(mustTMax)); } catch{} }, [mustTMax]);
   const [achieveTask, setAchieveTask] = useState("");
   const [showAchieve, setShowAchieve] = useState(false);
   const [showTimer,  setShowTimer]  = useState(false);
@@ -881,6 +898,11 @@ export default function App() {
           setRemovedFun([]);
           setMustItems([]);
           setFunItems([]);
+          setBreakMode("balanced");
+          setFunMin(5); setFunMax(15);
+          setMustTimedIds(new Set());
+          setMustTMin({}); setMustTMax({});
+          try { ["rft_mustItems","rft_funItems","rft_breakMode","rft_funMin","rft_funMax","rft_mustTimedIds","rft_mustTMin","rft_mustTMax"].forEach(k=>localStorage.removeItem(k)); } catch{}
         }} style={btn(C.must,"#1a1000",{fontSize:16,padding:"14px 28px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.4), 0 0 16px rgba(255,215,0,0.3)"})}>
           Start a New Day
         </button>
