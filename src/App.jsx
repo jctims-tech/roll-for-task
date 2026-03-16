@@ -602,7 +602,7 @@ export default function App() {
     } catch { return fallback; }
   };
 
-  const [screen,     setScreen]     = useState("landing");
+  const [screen,     setScreen]     = useState(()=>loadSaved("rft_screen","landing"));
   const [mustInput,  setMustInput]  = useState("");
   const [funInput,   setFunInput]   = useState("");
   const [funMin,     setFunMin]     = useState(()=>loadSaved("rft_funMin",5));
@@ -613,14 +613,24 @@ export default function App() {
   const [mustTimedIds, setMustTimedIds] = useState(()=>new Set(loadSaved("rft_mustTimedIds",[])));
   const [mustTMin,   setMustTMin]   = useState(()=>loadSaved("rft_mustTMin",{}));
   const [mustTMax,   setMustTMax]   = useState(()=>loadSaved("rft_mustTMax",{}));
-  const [result,     setResult]     = useState(null);
-  const [completed,  setCompleted]  = useState([]);
-  const [removedFun, setRemovedFun] = useState([]);
+  const [result,     setResult]     = useState(()=>loadSaved("rft_result",null));
+  const [completed,  setCompleted]  = useState(()=>loadSaved("rft_completed",[]));
+  const [removedFun, setRemovedFun] = useState(()=>loadSaved("rft_removedFun",[]));
   const completedRef  = useRef([]);
   const removedFunRef = useRef([]);
   const [confetti,   setConfetti]   = useState(false);
   const [achievement, setAchievement] = useState(null);
   const achieveTimerRef = useRef(null);
+
+  // Sync refs with restored state on mount
+  useEffect(()=>{ completedRef.current = completed; }, []);
+  useEffect(()=>{ removedFunRef.current = removedFun; }, []);
+
+  // Persist session state to localStorage whenever it changes
+  useEffect(()=>{ try { localStorage.setItem("rft_screen", JSON.stringify(screen==="celebration"?"game":screen)); } catch{} }, [screen]);
+  useEffect(()=>{ try { localStorage.setItem("rft_completed", JSON.stringify(completed)); } catch{} }, [completed]);
+  useEffect(()=>{ try { localStorage.setItem("rft_removedFun", JSON.stringify(removedFun)); } catch{} }, [removedFun]);
+  useEffect(()=>{ try { if(result) localStorage.setItem("rft_result", JSON.stringify({...result, duration:null})); else localStorage.removeItem("rft_result"); } catch{} }, [result]);
 
   // Persist setup state to localStorage whenever it changes
   useEffect(()=>{ try { localStorage.setItem("rft_mustItems", JSON.stringify(mustItems)); } catch{} }, [mustItems]);
@@ -902,7 +912,7 @@ export default function App() {
           setFunMin(5); setFunMax(15);
           setMustTimedIds(new Set());
           setMustTMin({}); setMustTMax({});
-          try { ["rft_mustItems","rft_funItems","rft_breakMode","rft_funMin","rft_funMax","rft_mustTimedIds","rft_mustTMin","rft_mustTMax"].forEach(k=>localStorage.removeItem(k)); } catch{}
+          try { ["rft_mustItems","rft_funItems","rft_breakMode","rft_funMin","rft_funMax","rft_mustTimedIds","rft_mustTMin","rft_mustTMax","rft_screen","rft_completed","rft_removedFun","rft_result"].forEach(k=>localStorage.removeItem(k)); } catch{}
         }} style={btn(C.must,"#1a1000",{fontSize:16,padding:"14px 28px",fontWeight:900,boxShadow:"0 4px 0 rgba(0,0,0,0.4), 0 0 16px rgba(255,215,0,0.3)"})}>
           Start a New Day
         </button>
