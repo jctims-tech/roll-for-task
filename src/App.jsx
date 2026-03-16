@@ -1050,7 +1050,7 @@ export default function App() {
               <span style={{fontSize:12,color:C.soft}}>min</span>
             </div>
             <div style={{fontSize:11,color:"rgba(168,122,255,0.5)",fontWeight:700,lineHeight:1.5,marginBottom:8}}>
-              🔬 5–15 min is the research-backed sweet spot for attention recovery — feel free to adjust. 😉
+              🔬 5–15 min is the research-backed sweet spot for attention recovery — feel free to adjust.
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {funItems.map(item=>(
@@ -1096,7 +1096,7 @@ export default function App() {
         </div>
 
         {/* Why it works footer link */}
-        <div style={{textAlign:"center", paddingBottom:24, paddingTop:8}}>
+        <div style={{textAlign:"center", paddingBottom:24, paddingTop:8, display:"flex", flexDirection:"column", alignItems:"center", gap:6}}>
           <a href="/why-it-works.html" style={{
             fontSize:11, color:"rgba(255,215,0,0.4)",
             fontWeight:700, textDecoration:"none", letterSpacing:0.3,
