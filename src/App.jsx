@@ -224,20 +224,31 @@ function Confetti({ active }) {
 
 // ── COUNTDOWN TIMER ───────────────────────────────────────────────────────────
 function CountdownTimer({ minutes, onDone }) {
-  const [secs, setSecs] = useState(minutes * 60);
-  const [running, setRunning] = useState(true);
-  const ref = useRef(null);
+  const totalSecs = minutes * 60;
+  const endTimeRef = useRef(Date.now() + totalSecs * 1000);
+  const [secs, setSecs] = useState(totalSecs);
+  const rafRef2 = useRef(null);
+  const doneRef = useRef(false);
+
   useEffect(() => {
-    if (!running) return;
-    ref.current = setInterval(() => {
-      setSecs(s => {
-        if (s <= 1) { clearInterval(ref.current); setRunning(false); playChime(); onDone&&onDone(); return 0; }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(ref.current);
-  }, [running]);
-  const m = Math.floor(secs/60), s = secs%60, pct = secs/(minutes*60);
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((endTimeRef.current - Date.now()) / 1000));
+      setSecs(remaining);
+      if (remaining <= 0) {
+        if (!doneRef.current) {
+          doneRef.current = true;
+          playChime();
+          onDone && onDone();
+        }
+        return;
+      }
+      rafRef2.current = setTimeout(tick, 500);
+    };
+    rafRef2.current = setTimeout(tick, 500);
+    return () => clearTimeout(rafRef2.current);
+  }, []);
+
+  const m = Math.floor(secs/60), s = secs%60, pct = secs/totalSecs;
   const r = 28, circ = 2*Math.PI*r;
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,margin:"10px 0"}}>
