@@ -199,7 +199,7 @@ function card(extra={}) {
 }
 function inp() {
   return { flex:1, border:"1.5px solid rgba(255,215,0,0.35)", borderRadius:10,
-    padding:"10px 14px", fontSize:16, fontFamily:"inherit",
+    padding:"10px 14px", fontSize:13, fontFamily:"inherit",
     background:"#08071a", color:"#ffffff" };
 }
 
