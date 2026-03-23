@@ -659,7 +659,6 @@ export default function App() {
   const [removedFun, setRemovedFun] = useState(()=>loadSaved("rft_removedFun",[]));
   const completedRef  = useRef([]);
   const removedFunRef = useRef([]);
-  const firstRollDone = useRef(false);
   const [confetti,   setConfetti]   = useState(false);
   const [achievement, setAchievement] = useState(null);
   const achieveTimerRef = useRef(null);
@@ -758,7 +757,6 @@ export default function App() {
     let pool;
     if (!freshMust.length) pool = freshFun;
     else if (!freshFun.length) pool = freshMust;
-    else if (!firstRollDone.current) pool = freshMust; // never a break on the very first roll
     else {
       const chance = breakMode === "chaos"
         ? Math.random() * 0.45 + 0.05
@@ -767,7 +765,6 @@ export default function App() {
     }
     if (!pool.length) return;
 
-    firstRollDone.current = true;
     handleResult(pool[Math.floor(Math.random() * pool.length)]);
   };
 
@@ -924,11 +921,19 @@ export default function App() {
         >
           Share feedback →
         </a>
+        <a href="/privacy.html" style={{
+          marginTop:8, fontSize:11, color:"rgba(255,255,255,0.15)",
+          fontWeight:700, textDecoration:"none", letterSpacing:0.3,
+          animation:"fadeUp 0.6s ease 0.65s both", display:"block",
+        }}
+          onMouseOver={e=>e.target.style.color="rgba(255,255,255,0.35)"}
+          onMouseOut={e=>e.target.style.color="rgba(255,255,255,0.15)"}
+        >
+          Privacy Policy
+        </a>
       </div>
     );
   }
-
-  // ── SETUP ─────────────────────────────────────────────────────────────────
   if (screen === "celebration") {
     return (
       <div style={{
@@ -979,7 +984,6 @@ export default function App() {
           setFunMin(5); setFunMax(15);
           setMustTimedIds(new Set());
           setMustTMin({}); setMustTMax({});
-          firstRollDone.current = false;
           completedRef.current = [];
           removedFunRef.current = [];
           try { ["rft_mustItems","rft_funItems","rft_breakMode","rft_funMin","rft_funMax","rft_mustTimedIds","rft_mustTMin","rft_mustTMax","rft_screen","rft_completed","rft_removedFun","rft_result"].forEach(k=>localStorage.removeItem(k)); } catch{}
@@ -990,7 +994,6 @@ export default function App() {
           setResult(null);
           setCompleted([]);
           setRemovedFun([]);
-          firstRollDone.current = false;
           completedRef.current = [];
           removedFunRef.current = [];
           setScreen("setup");
@@ -1138,6 +1141,15 @@ export default function App() {
             onMouseOut={e=>e.target.style.color="rgba(255,255,255,0.2)"}
           >
             Share feedback →
+          </a>
+          <a href="/privacy.html" style={{
+            fontSize:11, color:"rgba(255,255,255,0.15)",
+            fontWeight:700, textDecoration:"none", letterSpacing:0.3,
+          }}
+            onMouseOver={e=>e.target.style.color="rgba(255,255,255,0.35)"}
+            onMouseOut={e=>e.target.style.color="rgba(255,255,255,0.15)"}
+          >
+            Privacy Policy
           </a>
         </div>
       </div>
